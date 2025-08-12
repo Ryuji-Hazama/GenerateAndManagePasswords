@@ -55,7 +55,7 @@ class Logger:
     ################
     # Check log level
 
-    def isLogLevel(self, lLStr):
+    def isLogLevel(self, lLStr: str) -> LogLevel:
 
         for lLevel in self.LogLevel:
             if lLStr == lLevel.name:
@@ -67,7 +67,7 @@ class Logger:
     #################################
     # Logger
 
-    def logWriter(self, loglevel, message):
+    def logWriter(self, loglevel: LogLevel, message: any):
 
         ''' - - - - - - -*
         *                *
@@ -124,7 +124,7 @@ class Logger:
     ################################
     # Error messages
 
-    def ShowError(self, ex):
+    def ShowError(self, ex: Exception):
 
         ''' - - - - - - - - -*
         *                    *
@@ -149,6 +149,8 @@ class GenManPw:
         self.ITERATIONS = iterations
 
         self.Logger = Logger("GenManPw")
+        self.logger = self.Logger.logWriter
+        self.logLevel = self.Logger.LogLevel
         self.password = "".encode()
 
         # Check data file
@@ -233,12 +235,12 @@ EOF
             f.close()
 
             Tools.saveTagLine(self.DATA_FILE, "KEY", salt, "SECURITY_INFO")
-            self.Logger.logWriter(self.Logger.LogLevel.INFO, "File encrypted.")
+            self.logger(self.logLevel.INFO, "File encrypted.")
 
         except Exception as ex:
 
             self.Logger.ShowError(ex)
-            self.Logger.logWriter(self.Logger.LogLevel.ERROR, "File encryption failed.")
+            self.logger(self.logLevel.ERROR, "File encryption failed.")
 
         finally:
 
@@ -267,12 +269,12 @@ EOF
             f = open(self.PASS_LIST, "w")
             f.write(fileData)
             f.close()
-            self.Logger.logWriter(self.Logger.LogLevel.INFO, "File decrypted.")
+            self.logger(self.logLevel.INFO, "File decrypted.")
 
         except Exception as ex:
 
             self.Logger.ShowError(ex)
-            self.Logger.logWriter(self.Logger.LogLevel.ERROR, "Decryption failed.")
+            self.logger(self.logLevel.ERROR, "Decryption failed.")
             raise
 
         finally:
@@ -324,9 +326,9 @@ EOF
 
             # Log
 
-            self.Logger.logWriter(self.Logger.LogLevel.INFO, "System login password updated.")
-            self.Logger.logWriter(self.Logger.LogLevel.INFO, f"Password: *******{strPassWd[7:]}")
-            self.Logger.logWriter(self.Logger.LogLevel.INFO, f"Hashed  : {hashedPw}")
+            self.logger(self.logLevel.INFO, "System login password updated.")
+            self.logger(self.logLevel.INFO, f"Password: *******{strPassWd[7:]}")
+            self.logger(self.logLevel.INFO, f"Hashed  : {hashedPw}")
             print("\nPassword updated!")
 
             return hashedPw
@@ -334,7 +336,7 @@ EOF
         except Exception as ex:
 
             self.Logger.ShowError(ex)
-            self.Logger.logWriter(self.Logger.LogLevel.ERROR, "Failed to change password.")
+            self.logger(self.logLevel.ERROR, "Failed to change password.")
 
         return ""
 
@@ -390,25 +392,25 @@ EOF
             symList = f.readlines()
             f.close()
 
-            self.Logger.logWriter(self.Logger.LogLevel.INFO, "Symbol list loaded")
+            self.logger(self.logLevel.INFO, "Symbol list loaded")
 
             f = open(path.join(self.CWD, "NameList.txt"))
             nameList = f.readlines()
             f.close()
 
-            self.Logger.logWriter(self.Logger.LogLevel.INFO, "Names list loaded")
+            self.logger(self.logLevel.INFO, "Names list loaded")
 
             f = open(path.join(self.CWD, "WordList.txt"))
             wordList = f.readlines()
             f.close()
 
-            self.Logger.logWriter(self.Logger.LogLevel.INFO, "Word list loaded")
+            self.logger(self.logLevel.INFO, "Word list loaded")
 
             f = open(path.join(self.CWD, "VerbList.txt"))
             verbList = f.readlines()
             f.close()
 
-            self.Logger.logWriter(self.Logger.LogLevel.INFO, "Verbs list loaded")
+            self.logger(self.logLevel.INFO, "Verbs list loaded")
 
         except Exception as ex:
 
@@ -564,11 +566,11 @@ EOF
 
         if overwrite:
 
-            self.Logger.logWriter(self.Logger.LogLevel.INFO, "Edit account password.")
+            self.logger(self.logLevel.INFO, "Edit account password.")
 
         else:
 
-            self.Logger.logWriter(self.Logger.LogLevel.INFO, "Generate account password.")
+            self.logger(self.logLevel.INFO, "Generate account password.")
 
         while True:
 
@@ -591,9 +593,9 @@ EOF
                 while True:
 
                     res = input(f"\n{newAccount} is already exists in {siteName}\n"
-                          f"Will you edit {newAccount} for {siteName} (y/n) > ").upper()
+                          f"Will you edit {newAccount} for {siteName} (y/n/c(ancel)) > ").upper()
                     
-                    if res in self.EXIT_OPS + ["N"]:
+                    if res in self.EXIT_OPS + ["C"]:
 
                         return False
                     
@@ -643,16 +645,16 @@ EOF
             except Exception as ex:
 
                 self.Logger.ShowError(ex)
-                self.Logger.logWriter(self.Logger.LogLevel.ERROR, "Could not save the password info.")
+                self.logger(self.logLevel.ERROR, "Could not save the password info.")
                 return False
 
             Tools.saveTagLine(self.DATA_FILE, newAccount, pwTag, self.DATA_TAG, siteName)
 
-            self.Logger.logWriter(self.Logger.LogLevel.INFO, f"VV Create new data VV")
-            self.Logger.logWriter(self.Logger.LogLevel.INFO, f"Site   : {siteName}")
-            self.Logger.logWriter(self.Logger.LogLevel.INFO, f"Account: {newAccount}")
-            self.Logger.logWriter(self.Logger.LogLevel.INFO, f"PassWd : {newPassword[:4]}******{newPassword[10:]}")
-            self.Logger.logWriter(self.Logger.LogLevel.INFO, f"^^ Create complete ^^")
+            self.logger(self.logLevel.INFO, f"VV Create new data VV")
+            self.logger(self.logLevel.INFO, f"Site   : {siteName}")
+            self.logger(self.logLevel.INFO, f"Account: {newAccount}")
+            self.logger(self.logLevel.INFO, f"PassWd : {newPassword[:4]}******{newPassword[10:]}")
+            self.logger(self.logLevel.INFO, f"^^ Create complete ^^")
             print("\nNew data created!\n")
 
             break
@@ -676,7 +678,7 @@ EOF
     ##########################
     # Account selection menu
 
-    def selectAccount(self, siteName, page) -> str:
+    def selectAccount(self, siteName: str, page: str) -> str:
 
         accList = Tools.getTags(self.DATA_FILE, self.DATA_TAG, siteName)
 
@@ -737,7 +739,7 @@ EOF
     def GeneratePasswordMain(self):
 
         print("\n\n * Generate Password *")
-        self.Logger.logWriter(self.Logger.LogLevel.INFO, "Generate Password menu loaded.")
+        self.logger(self.logLevel.INFO, "Generate Password menu loaded.")
 
         while True:
 
@@ -846,7 +848,7 @@ EOF
 
             if password == "":
 
-                self.Logger.logWriter(self.Logger.LogLevel.INFO, "First time to login.")
+                self.logger(self.logLevel.INFO, "First time to login.")
 
                 password = self.changeSysPasswd()
 
@@ -859,7 +861,7 @@ EOF
         except Exception as ex:
 
             self.Logger.ShowError(ex)
-            self.Logger.logWriter(self.Logger.LogLevel.ERROR, "Could not get login info.")
+            self.logger(self.logLevel.ERROR, "Could not get login info.")
             
             return
 
@@ -878,12 +880,12 @@ EOF
             if isMatch:
 
                 self.password = strPassWd.encode()
-                self.Logger.logWriter(self.Logger.LogLevel.INFO, "System login.")
+                self.logger(self.logLevel.INFO, "System login.")
                 break
 
             print("\n* Password incorrect.\n"
                   "* Please try again.")
-            self.Logger.logWriter(self.Logger.LogLevel.INFO, f"Login failed {i + 1}")
+            self.logger(self.logLevel.INFO, f"Login failed {i + 1}")
 
         if not isMatch:
 
@@ -905,7 +907,7 @@ EOF
             
             while True:
 
-                self.Logger.logWriter(self.Logger.LogLevel.INFO, "Main menu loaded.")
+                self.logger(self.logLevel.INFO, "Main menu loaded.")
 
                 print("\n\n"
                     " * Main Menu *\n\n"
@@ -936,7 +938,7 @@ EOF
 
                 elif select in self.EXIT_OPS:
 
-                    self.Logger.logWriter(self.Logger.LogLevel.INFO, "System logout.")
+                    self.logger(self.logLevel.INFO, "System logout.")
                     return 0
 
                 else:
@@ -946,8 +948,8 @@ EOF
         except Exception as ex:
 
             self.Logger.ShowError(ex)
-            self.Logger.logWriter(self.Logger.LogLevel.FATAL, "Could not handled the error.")
-            self.Logger.logWriter(self.Logger.LogLevel.FATAL, "Exit the program.")
+            self.logger(self.logLevel.FATAL, "Could not handled the error.")
+            self.logger(self.logLevel.FATAL, "Exit the program.")
             return
 
         finally:
@@ -971,5 +973,5 @@ gmp.mainMenu()
 # Settings menu
     # Change system password
     # Export data
-    # iImport data
+    # Import data
     # etc...
