@@ -7,7 +7,9 @@ import hashlib
 import inspect
 import os
 from os import path, mkdir, getpid
+import pyperclip
 import random
+import sys
 import Tools
 import traceback
 
@@ -153,6 +155,16 @@ class GenManPw:
         self.logLevel = self.Logger.LogLevel
         self.password = "".encode()
 
+        # Check the OS for clear screen
+
+        if sys.platform.startswith("win"):
+
+            self.clearCommand = "cls"
+
+        else:
+
+            self.clearCommand = "clear"
+
         # Check data file
 
         if not path.isdir(path.join(self.CWD, "datas")):
@@ -212,7 +224,22 @@ EOF
                 if f is not None:
 
                     f.close()
-            
+
+    ####################################
+    # Clear screen
+
+    def clearScreen(self):
+
+        try:
+
+            os.system(self.clearCommand)
+
+        except Exception as ex:
+
+            self.logger(self.logLevel.WARN, "Could not clear the screen.")
+            self.Logger.ShowError(ex)
+
+    #
     ####################################
     # Encode file
 
@@ -366,7 +393,7 @@ EOF
 
                 elif indexLetter == "a" and willCange:
 
-                    indexLetter = random.choice("4", "@")
+                    indexLetter = random.choice(["4", "@"])
 
                 elif indexLetter == "s" and willCange:
 
@@ -391,7 +418,7 @@ EOF
     ####################################
     # Generate password string
 
-    def generatePasswordStr(self):
+    def generatePasswordStr(self) -> str:
 
         pwStr = ""
         secondRound = False
@@ -458,7 +485,7 @@ EOF
 
             # Number?
 
-            if not any(c.isdigit() for c in pwStr) or random.choice(self.CHOICE):
+            if not any(c.isdigit() for c in pwStr) or random.choice(self.CHOICE + [False]):
 
                 pwStr += random.choice(["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"])
             
@@ -487,27 +514,30 @@ EOF
         while True:
 
             newPassword = self.generatePasswordStr()
-            print(f"\nNew password: {newPassword}")
             question = random.choice(["You like it?", "How about this? "])
 
             while True:
 
-                res = input(f"\n{question} (y/n) > ").upper()
+                print(f"\nNew password: {newPassword}")
+                res = input(f"\n{question} (y/n) > ")
+                resU = res.upper()
+                self.clearScreen()
 
-                if res == "Y":
+                if resU == "Y":
 
                     return newPassword
                 
-                elif res == "N":
+                elif resU == "N":
 
                     break
 
-                elif res in self.EXIT_OPS:
+                elif resU in self.EXIT_OPS:
 
                     return ""
                 
                 else:
 
+                    print(f"\n{res} is not on the menu.")
                     continue
     
     #
@@ -527,7 +557,7 @@ EOF
 
                 print(f"> Page {i + 1} / {listLen // 10 + 1} <")
 
-            print("\n")
+            print("")
 
             for j in range(10):
 
@@ -551,6 +581,7 @@ EOF
             print(" E) Exit menu")
 
             res = input(f"\nSelect > ").upper()
+            self.clearScreen()
 
             if res in self.EXIT_OPS:
 
@@ -597,6 +628,7 @@ EOF
             ################################
 
             newAccount = input("\nAccount name > ").replace(" ", "_")
+            self.clearScreen()
 
             if newAccount.upper() in self.EXIT_OPS:
 
@@ -610,6 +642,7 @@ EOF
 
                     res = input(f"\n{newAccount} is already exists in {siteName}\n"
                           f"Will you edit {newAccount} for {siteName} (y/n/c(ancel)) > ").upper()
+                    self.clearScreen()
                     
                     if res in self.EXIT_OPS + ["C"]:
 
@@ -681,7 +714,9 @@ EOF
 
     def selectSite(self, pageInd = 0) -> str:
 
+        self.clearScreen()
         siteList = Tools.getHeaders(self.DATA_FILE, self.DATA_TAG)
+        siteList.sort()
         
         if len(siteList) == 0:
 
@@ -696,7 +731,9 @@ EOF
 
     def selectAccountName(self, siteName: str, pageInd = 0) -> str:
 
+        self.clearScreen()
         accList = Tools.getTags(self.DATA_FILE, self.DATA_TAG, siteName)
+        accList.sort()
 
         if len(accList) == 0:
 
@@ -715,14 +752,15 @@ EOF
 
         while True:
 
-            newSite = input("\nSite name > ")
+            newSite = input("\n\nSite name > ")
 
             if newSite in siteList:
 
                 while True:
 
-                    res = input(f"\n{newSite} is already existing in the list\n"
+                    res = input(f"\n[{newSite}] is already existing in the list\n\n"
                                 "Will you add new account? (y/n) > ").upper()
+                    self.clearScreen()
                     
                     if res in {"Y", "N"}:
 
@@ -740,8 +778,11 @@ EOF
     
                     continue
 
+                print(f"\n\nSite name > {newSite}")
+
             elif newSite.upper() in self.EXIT_OPS:
 
+                self.clearScreen()
                 return
 
             self.createNewAccount(newSite)
@@ -755,6 +796,7 @@ EOF
     def GeneratePasswordMain(self):
 
         self.logger(self.logLevel.INFO, "Generate Password menu loaded.")
+        self.clearScreen()
 
         while True:
 
@@ -763,7 +805,8 @@ EOF
                   " 2) New account (for saved site)\n" \
                   " E) Back to main menu\n")
             select = input("Generate password for... > ").upper()
-
+            self.clearScreen()
+            
             if select == "1":
 
                 try:
@@ -806,31 +849,30 @@ EOF
     ##########################
     # Show password
 
-    def showPassWd(self, siteName: str, accountName: str):
+    def getPassWd(self, siteName: str, accountName: str):
 
-        # Get account tag
+        try:
 
-        accountTag = Tools.readMapleTag(self.DATA_FILE, accountName, self.DATA_TAG, siteName)
+            # Get account tag
 
-        # Decrypt password
+            accountTag = Tools.readMapleTag(self.DATA_FILE, accountName, self.DATA_TAG, siteName)
 
-        passWdToken = Tools.readMapleTag(self.PASS_LIST, accountTag, "PW").encode()
-        salt = Tools.readMapleTag(self.PASS_LIST, accountTag, "SALTS") + siteName + accountName
+            # Decrypt password
 
-        key = base64.b64encode(hashlib.pbkdf2_hmac(self.HASH_TYPE, self.password, salt.encode(), self.ITERATIONS))
-        password = Fernet(key).decrypt(passWdToken).decode()
+            passWdToken = Tools.readMapleTag(self.PASS_LIST, accountTag, "PW").encode()
+            salt = Tools.readMapleTag(self.PASS_LIST, accountTag, "SALTS") + siteName + accountName
 
-        # Get max string length
+            key = base64.b64encode(hashlib.pbkdf2_hmac(self.HASH_TYPE, self.password, salt.encode(), self.ITERATIONS))
+            return Fernet(key).decrypt(passWdToken).decode()
 
-        xLen = max([len(siteName), len(accountName), len(password)]) + 11
+        except Exception as ex:
 
-        print("\n"
-                f" *{"".join("-" for _ in range(xLen))}*\n"
-                f" * Site    : {siteName}\n"
-                f" * Account : {accountName}\n"
-                f" * PassWd  : {password}\n"
-                f" *{"".join("-" for _ in range(xLen))}*")
-    
+            self.Logger.ShowError(ex)
+
+        self.logger(self.logLevel.WARN, f"Failed to get password string. Site: {siteName} / Account: {accountName}")
+        print("\nFailed to get password.")
+        return ""
+        
     #
     ##########################
     # Password serch menu
@@ -838,7 +880,7 @@ EOF
     def selectAccount(self) -> list[str]:
         
         while True:
-            
+        
             siteName = self.selectSite()
 
             if siteName == "":
@@ -863,28 +905,41 @@ EOF
 
             return
         
-        print("\n\n"
-              f"    Site   : {siteName}\n"
-              f"    Account: {accountName}\n")
+        self.logger(self.logLevel.INFO, f"Manage password. Site: {siteName} / Account: {accountName}")
         
         while True:
 
             print(f"\n"
                   f" * Manage Password *\n\n"
+                  f"  Site   : {siteName}\n"
+                  f"  Account: {accountName}\n\n"
                   f"1) Show password\n"
                   f"2) Change password\n"
                   f"D) Delete data\n"
                   f"E) Exit\n\n")
-            
             res = input("Will you... > ").upper()
+            self.clearScreen()
 
             if res == "1":
 
-                self.showPassWd(siteName, accountName)
+                password = self.getPassWd(siteName, accountName)
+
+                # Get max string length
+
+                xLen = max([len(siteName), len(accountName), len(password)]) + 11
+
+                print("\n"
+                        f" *{"".join("-" for _ in range(xLen))}*\n"
+                        f" * Site    : {siteName}\n"
+                        f" * Account : {accountName}\n"
+                        f" * PassWd  : {password}\n"
+                        f" *{"".join("-" for _ in range(xLen))}*")
+
                 break
 
             elif res in self.EXIT_OPS:
 
+                self.clearScreen()
                 return
             
             else:
@@ -957,29 +1012,35 @@ EOF
         try:
 
             self.decodeFile()
+            self.clearScreen()
             print("""
+ Welcome to...
 
-::::::::::::::n,
-"::::M^^^^^\\::::M
- ::::M      :::::M
- ::::M      ;::;M
- :::::..,,;::;M"   ........_     ......_     ......_
- ::::M^^^^^^"     ::v^^^^:::A   ::v^^\\::A   ::v^^\\::A
- ::::M            "^.... :::M   ':...,`^^   ':...,`^^
- ::::M           :::W^^^':::M    `"\""`;::\\   `"\""`;::\\
- ::::M           '::.....:::.A  ::.....;:;N ::.....;:;N
- "^^^^            `^^^^^^^^^^   `^^^^^^^^   `^^^^^^^^
+*--------------------------------------------------------------------*
 
- ::::q          ::::n
- :::::.,      .:::::M
- :::::::.,  .:::::::M
- :::::::::.:::'W::::M
- ::::M;:::::'W" ::::M     ........_   .........._     ........_
- ::::M "'::W"   ::::M    ::v^^^^:::A  ":::v^^^:::A   ::v^^^^:::A
- ::::M    '"    ::::M    "^.... :::M   :::M   :::M   "^.... :::M
- ::::M          ::::M   :::W^^^':::M   :::M   :::M  :::W^^^':::M
-::::::A        ::::::A  '::.....:::.A  :::M   ::::A '::.....:::.A
-"^^^^^^        "^^^^^^   `^^^^^^^^^^   "^^^   "^^^^  `^^^^^^^^^^
+  ::::::::::::::n,
+  "::::M^^^^^\\::::M
+   ::::M      :::::M
+   ::::M      ;::;M
+   :::::..,,;::;M"   ........_     ......_     ......_
+   ::::M^^^^^^"     ::v^^^^:::A   ::v^^\\::A   ::v^^\\::A
+   ::::M            "^.... :::M   ':...,`^^   ':...,`^^
+   ::::M           :::W^^^':::M    `"\""`;::\\   `"\""`;::\\
+   ::::M           '::.....:::.A  ::.....;:;N ::.....;:;N
+   "^^^^            `^^^^^^^^^^   `^^^^^^^^   `^^^^^^^^
+
+   ::::q          ::::n
+   :::::.,      .:::::M
+   :::::::.,  .:::::::M
+   :::::::::.:::'W::::M
+   ::::M;:::::'W" ::::M     ........_   .........._     ........_
+   ::::M "'::W"   ::::M    ::v^^^^:::A  ":::v^^^:::A   ::v^^^^:::A
+   ::::M    '"    ::::M    "^.... :::M   :::M   :::M   "^.... :::M
+   ::::M          ::::M   :::W^^^':::M   :::M   :::M  :::W^^^':::M
+  ::::::A        ::::::A  '::.....:::.A  :::M   ::::A '::.....:::.A
+  "^^^^^^        "^^^^^^   `^^^^^^^^^^   "^^^   "^^^^  `^^^^^^^^^^
+
+*--------------------------------------------------------------------*
 
 """)
             
@@ -994,6 +1055,7 @@ EOF
                     " S) Settings\n"
                     " Q) Quit\n")
                 select = input("Select menu > ").upper()
+                self.clearScreen()
 
                 if select == "1":
 
@@ -1026,7 +1088,8 @@ EOF
         finally:
 
             self.encodeFile()
-            print("\nSee ya!\n\n")
+            self.logger(self.logLevel.INFO, "\n- - - - - - - - - - - - - - - -")
+            print("\n\n See ya!\n")
 
 #############################
 # Main method (test)

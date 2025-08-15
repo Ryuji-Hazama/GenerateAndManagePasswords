@@ -95,7 +95,7 @@ def showError(ex):
 ##############################
 # Remove white space
 
-def removeWhiteSpace(strLine):
+def removeWhiteSpace(strLine: str) -> str:
 
     strLen = len(strLine)
     ind = 0
@@ -113,7 +113,7 @@ def removeWhiteSpace(strLine):
 ################################
 # Get tag
 
-def getTag(mapleLine):
+def getTag(mapleLine: str) -> str:
 
     if mapleLine == "":
         return ""
@@ -144,7 +144,7 @@ def getTag(mapleLine):
 ###########################
 # Get value
 
-def getValue(mapleLine):
+def getValue(mapleLine: str) -> str:
 
     ind = 0
 
@@ -248,7 +248,7 @@ def ToEwithW(baseFile, copyFile):
 ######################
 # Format maple file
 
-def mapleFormatter(originalFile, saveFile=None):
+def mapleFormatter(originalFile: str, saveFile: str = None) -> bool:
 
     originalFileR = None
     saveFileTemp = None
@@ -362,7 +362,7 @@ def mapleFormatter(originalFile, saveFile=None):
 *                            *
 * - - - - - - - - - - - - -'''
 
-def readMapleTag(fileName, tag, *headers) -> str:
+def readMapleTag(fileName: str, tag: str, *headers: str) -> str:
 
     retStr = ""
     mapleFile = None
@@ -427,7 +427,7 @@ def readMapleTag(fileName, tag, *headers) -> str:
 ###################################################
 # Save tag line
 
-def saveTagLine(saveFile, tag, valueStr, *headers):
+def saveTagLine(saveFile: str, tag: str, valueStr: str, *headers: str) -> bool:
 
     mapleFile = None
     mapleCopyFile = None
@@ -566,7 +566,7 @@ def saveTagLine(saveFile, tag, valueStr, *headers):
 #############################
 # Delete header
 
-def deleteHeader(delFile, delHead, *Headers):
+def deleteHeader(delFile: str, delHead: str, *Headers: str) -> bool:
 
     mapleFile = None
     mapleCopyFile = None
@@ -700,7 +700,7 @@ def deleteHeader(delFile, delHead, *Headers):
 ############################
 # Get headers list
 
-def getHeaders(readFile, *headers):
+def getHeaders(readFile: str, *headers: str) -> list[str]:
 
     retList = []
     headCount = len(headers)
@@ -764,7 +764,7 @@ def getHeaders(readFile, *headers):
 ############################
 # Get headers list
 
-def getTags(readFile, *headers):
+def getTags(readFile: str, *headers: str) -> list[str]:
 
     retList = []
     headCount = len(headers)
