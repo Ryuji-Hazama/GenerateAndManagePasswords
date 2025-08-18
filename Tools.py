@@ -409,7 +409,7 @@ def readMapleTag(fileName: str, tag: str, *headers: str) -> str:
                 retStr = getValue(fileLine)
                 break
 
-            elif lineTag == "EOF" or fileLine == "":
+            elif lineTag == "EOF" or lineTag == "E" or fileLine == "":
                 logWriter(LogLevel.WARN, f"Could not find tag: {tag} in headers: [{", ".join(headers)}]")
                 break
 
@@ -564,6 +564,131 @@ def saveTagLine(saveFile: str, tag: str, valueStr: str, *headers: str) -> bool:
 
 #
 #############################
+# Delete tag line
+
+def deleteTag(delFile: str, delTag: str, *headers: str) -> bool:
+
+    """
+    Delete tag(delTag) from header(headers) in Maple file(delFile)
+    Return True if it success.
+    """
+
+    mapleFile = None
+    mapleCopyFile = None
+
+    try:
+
+        if not path.isfile(delFile):
+
+            logWriter(LogLevel.WARN, f"File does not extist: {delFile}")
+            return False
+        
+        # Create tmp file name
+
+        delCopyFile = f"{delFile}.tmp"
+        ind = 0
+
+        while path.isfile(delCopyFile):
+
+            delCopyFile = f"{delFile}{ind}.tmp"
+            int += 1
+
+        mapleFile = open(delFile, "r")
+        mapleCopyFile = open(delCopyFile, "w")
+
+        # Move to MAPLE tag
+
+        toMaple(mapleFile, mapleCopyFile)
+
+        # Dig into headers
+
+        ind = 0
+
+        while ind < len(headers):
+
+            fileLine = mapleFile.readline()
+            mapleCopyFile.write(fileLine)
+            lineTag = getTag(fileLine)
+
+            if lineTag == "H":
+
+                lineValue = getValue(fileLine)
+
+                if lineValue == headers[ind]:
+
+                    ind += 1
+                    deepestInd = ind
+
+                else:
+
+                    ToEwithW(mapleFile, mapleCopyFile)
+
+            elif lineTag == "E":
+
+                ind -= 1
+
+            elif lineTag == "EOF":
+
+                logWriter(LogLevel.WARN, f"Header [{headers[deepestInd]}] does not exist in headers: [{", ".join(headers[:deepestInd])}]")
+                return False
+        
+        # Search tag
+
+        while True:
+
+            fileLine = mapleFile.readline()
+            lineTag = getTag(fileLine)
+
+            if lineTag == delTag:
+
+                break
+
+            elif lineTag == "E" or lineTag == "EOF" or fileLine == "":
+
+                logWriter(LogLevel.WARN, f"Tag [{delTag}] does not extsts in headers: [{", ".join(headers)}]")
+                return False
+            
+            else:
+
+                mapleCopyFile.write(fileLine)
+
+        # Copy to the end
+
+        fileLine = mapleFile.readline()
+
+        while fileLine != "":
+
+            mapleCopyFile.write(fileLine)
+            fileLine = mapleFile.readline()
+
+        mapleFile.close()
+        mapleCopyFile.close()
+
+        # Format file
+
+        mapleFormatter(delCopyFile, delFile)
+
+        return True
+
+    except Exception as ex:
+
+        logWriter(LogLevel.ERROR, f"Failed to delete tag: {delTag}")
+        showError(ex)
+        return False
+
+    finally:
+
+        if mapleFile != None:
+            mapleFile.close()
+
+        if mapleCopyFile != None:
+            mapleCopyFile.close()
+
+        if path.isfile(delCopyFile):
+            remove(delCopyFile)
+
+#
+#############################
 # Delete header
 
 def deleteHeader(delFile: str, delHead: str, *Headers: str) -> bool:
@@ -702,6 +827,10 @@ def deleteHeader(delFile: str, delHead: str, *Headers: str) -> bool:
 
 def getHeaders(readFile: str, *headers: str) -> list[str]:
 
+    """
+    Get and return headers list from headers in Maple file(readFile)
+    """
+
     retList = []
     headCount = len(headers)
     i = 0
@@ -762,9 +891,13 @@ def getHeaders(readFile: str, *headers: str) -> list[str]:
 
 #
 ############################
-# Get headers list
+# Get tag list
 
 def getTags(readFile: str, *headers: str) -> list[str]:
+
+    """
+    Get and return tag list from headers in Maple file(readFile)
+    """
 
     retList = []
     headCount = len(headers)
@@ -833,6 +966,10 @@ def getTags(readFile: str, *headers: str) -> list[str]:
 
 def winHide(*fdPath):
 
+    """
+    Hide file in Windows
+    """
+
     try:
 
         for hPath in fdPath:
@@ -848,6 +985,10 @@ def winHide(*fdPath):
 # Unhide files and directories
 
 def winUnHide(*fdPath):
+
+    """
+    Unhide file in Windows
+    """
 
     try:
 

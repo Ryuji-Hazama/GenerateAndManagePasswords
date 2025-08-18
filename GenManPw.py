@@ -12,6 +12,7 @@ import random
 import sys
 import Tools
 import traceback
+import readline
 
 class Logger:
 
@@ -70,6 +71,10 @@ class Logger:
     # Logger
 
     def logWriter(self, loglevel: LogLevel, message: any):
+
+        """
+        Output log to log file and console.
+        """
 
         ''' - - - - - - -*
         *                *
@@ -141,7 +146,7 @@ class GenManPw:
 
     def __init__(self, iterations):
 
-        self.EXIT_OPS = {"Q", "E", "QUIT", "EXIT", "CANCEL"}
+        self.EXIT_OPS = {"Q", "E", "C", "QUIT", "EXIT", "CANCEL"}
         self.CHOICE = [True, False]
         self.CWD = os.getcwd()
         self.DATA_FILE = path.join(self.CWD, "datas", "datas.mpl")
@@ -387,7 +392,7 @@ EOF
 
                     indexLetter = "0"
 
-                elif indexLetter in {"i", "l"} and willCange:
+                elif indexLetter in ("i", "l") and willCange:
 
                     indexLetter = "1"
 
@@ -511,6 +516,8 @@ EOF
 
     def confPassword(self) -> str:
 
+        self.logger(self.logLevel.INFO, "Auto generate password.")
+
         while True:
 
             newPassword = self.generatePasswordStr()
@@ -531,6 +538,14 @@ EOF
 
                     break
 
+                elif resU == "COPY":
+
+                    pyperclip.copy(newPassword)
+                    self.clearScreen()
+                    self.logger(self.logLevel.INFO, "Password copied to clipboard.")
+                    print("Password copied to clipboard.")
+                    continue
+
                 elif resU in self.EXIT_OPS:
 
                     return ""
@@ -539,13 +554,65 @@ EOF
 
                     print(f"\n{res} is not on the menu.")
                     continue
-    
+
+    #
+    ##########################
+    # Manually input password
+
+    def manualPassword(self) -> str:
+
+        self.logger(self.logLevel.INFO, "Manually create password.")
+
+        while True:
+
+            pwStr = input("\nInput new password > ")
+
+            if pwStr.upper() in self.EXIT_OPS:
+
+                self.clearScreen()
+                return ""
+            
+            elif pwStr == "":
+
+                self.clearScreen()
+                continue
+
+            else:
+
+                while True:
+
+                    res = input(f"\n Will you use [{pwStr}] as a password? (y/n) > ")
+                    resU = res.upper()
+
+                    if resU == "Y":
+
+                        self.clearScreen()
+                        return pwStr
+                    
+                    elif resU == "N":
+
+                        self.clearScreen()
+                        break
+
+                    elif resU == "COPY":
+
+                        pyperclip.copy(pwStr)
+                        self.clearScreen()
+                        self.logger(self.logLevel.INFO, "Password copied to clipboard.")
+                        print("\nPassword copied to clipboard.")
+                        continue
+
+                    else:
+
+                        print(f"\n{res} is not on the menu.")
+        
     #
     ##########################
     # List select
 
     def selectFromList(self, selectList: list[str], menuStr: str, i = 0) -> str:
 
+        self.logger(self.logLevel.INFO, f"{menuStr} Selection Menu")
         listLen = len(selectList)
 
         while True:
@@ -553,9 +620,11 @@ EOF
             menuChoice = []
 
             print(f"\n\n * {menuStr} Selection Menu *")
+            self.logger(self.logLevel.INFO, f"Page {i + 1} / {listLen // 10 + 1}")
+
             if listLen > 10:
 
-                print(f"> Page {i + 1} / {listLen // 10 + 1} <")
+                print(f" > Page {i + 1} / {listLen // 10 + 1} <")
 
             print("")
 
@@ -580,73 +649,208 @@ EOF
 
             print(" E) Exit menu")
 
-            res = input(f"\nSelect > ").upper()
+            res = input(f"\nSelect > ")
+            resU = res.upper()
             self.clearScreen()
 
-            if res in self.EXIT_OPS:
+            if resU in self.EXIT_OPS:
 
+                self.logger(self.logLevel.INFO, "Selected none.")
                 return ""
             
-            elif res in menuChoice:
+            elif resU in menuChoice:
 
-                if res == "N":
+                if resU == "N":
 
                     i += 1
 
-                elif res == "P":
+                elif resU == "P":
 
                     i -= 1
 
                 else:
 
+                    self.logger(self.logLevel.INFO, f"[{selectList[int(res) + i * 10]}] selected.")
                     return selectList[int(res) + i * 10]
+                
+            elif resU.startswith("SEARCH "):
+
+                # If there is no search string after the command
+
+                if len(resU) < 8:
+
+                    print("Search string empty.")
+                    continue
+
+                # Get serch string
+
+                self.logger(self.logLevel.INFO, resU)
+                searchStr = res[7:]
+
+                # Create list
+
+                newSelectList = []
+
+                for listElement in selectList:
+
+                    if searchStr.upper() in listElement.upper():
+
+                        newSelectList.append(listElement)
+
+                # If there is no match element in the list
+
+                if len(newSelectList) == 0:
+
+                    print(f"Could not find \"{searchStr}\" in the list.")
+                    self.logger(self.logLevel.INFO, "No match data.")
+                    continue
+
+                print(f"\nFound {len(newSelectList)} items from {menuStr}.")
+                selectedItem = self.selectFromList(newSelectList, f"Search Result")
+
+                if selectedItem != "":
+
+                    return selectedItem
             
             else:
 
                 print(f"\n{res} is not on the menu.\n")
-
+            
     #
     ##########################
     # Create new account
     
-    def createNewAccount(self, siteName, overwrite = False):
+    def generateNewPassword(self, siteName: str, accountName: str, newData: bool | None = True) -> bool:
 
-        if overwrite:
-
-            self.logger(self.logLevel.INFO, "Edit account password.")
-
-        else:
-
-            self.logger(self.logLevel.INFO, "Generate account password.")
+        newOrEdit = ("Edit", "Create new")
+        self.logger(self.logLevel.INFO, f"{newOrEdit[newData]} data.")
 
         while True:
 
-            ################################
-            # TODO_                        #
-            # If overwrite: select account #
-            # If not: enter account name   #
-            ################################
+            res = input("\nGenerate a password or create it manually?\n\n"
+                        "A) Auto generate\n" \
+                        "M) Create it manually\n" \
+                        "C) Cancel\n\n" \
+                        "Will you... > ")
+            resU = res.upper()
+            self.clearScreen()
+
+            if resU in self.EXIT_OPS:
+
+                # Exit
+
+                return False
+
+            elif resU == "A":
+
+                # Generate password
+
+                newPassword = self.confPassword()
+
+            elif resU == "M":
+
+                # Create password manually
+
+                newPassword = self.manualPassword()
+
+            else:
+
+                print(f"{res} is not on the menu.")
+                continue
+
+            if newPassword != "":
+
+                break
+
+        try:
+            
+            # Encrypt password
+
+            passSalt = os.urandom(16).hex()
+            saltStr = passSalt + siteName + accountName
+            key = base64.b64encode(hashlib.pbkdf2_hmac(self.HASH_TYPE, self.password, saltStr.encode(), self.ITERATIONS))
+            token = Fernet(key).encrypt(newPassword.encode()).decode()
+            
+            if newData:
+                    
+                # Create new tag
+
+                try:
+
+                    tagList = Tools.getTags(self.PASS_LIST, "PW")
+                    i = 0
+                    pwTag = f"PW{i}"
+
+                    while pwTag in tagList:
+
+                        i += 1
+                        pwTag = f"PW{i}"
+
+                except Exception as ex:
+
+                    self.Logger.ShowError(ex)
+
+                # Save tag
+
+                Tools.saveTagLine(self.DATA_FILE, accountName, pwTag, self.DATA_TAG, siteName)
+
+            else:
+
+                # Get pw tag
+
+                pwTag = Tools.readMapleTag(self.DATA_FILE, accountName, self.DATA_TAG, siteName)
+
+            # Save
+
+            Tools.saveTagLine(self.PASS_LIST, pwTag, token, "PW")
+            Tools.saveTagLine(self.PASS_LIST, pwTag, passSalt, "SALTS")
+
+            self.logger(self.logLevel.INFO, f"VV Create new data VV")
+            self.logger(self.logLevel.INFO, f"Site   : {siteName}")
+            self.logger(self.logLevel.INFO, f"Account: {accountName}")
+            self.logger(self.logLevel.INFO, f"PassWd : {newPassword[:4]}******{newPassword[10:]}")
+            self.logger(self.logLevel.INFO, f"^^ Create complete ^^")
+            print(("\nPassword updated", "\nNew data created!")[newData])
+
+        except Exception as ex:
+
+            self.logger(self.logLevel.ERROR, "Failed to generate new password.")
+            self.Logger.ShowError(ex)
+
+    #
+    ####################################################
+    # Create new account name
+
+    def createNewAccountName(self, siteName: str) -> str:
+
+        while True:
 
             newAccount = input("\nAccount name > ").replace(" ", "_")
             self.clearScreen()
 
             if newAccount.upper() in self.EXIT_OPS:
 
-                return False
+                return ""
+            
+            elif newAccount == "":
+
+                print("Account name is empty.")
+                continue
             
             accountList = Tools.getTags(self.DATA_FILE, self.DATA_TAG, siteName)
 
-            if newAccount in accountList and not overwrite:
+            if newAccount in accountList:
 
                 while True:
 
                     res = input(f"\n{newAccount} is already exists in {siteName}\n"
+                                f"You cannot access the old data after editing.\n\n"
                           f"Will you edit {newAccount} for {siteName} (y/n/c(ancel)) > ").upper()
                     self.clearScreen()
                     
-                    if res in self.EXIT_OPS + ["C"]:
+                    if res in self.EXIT_OPS:
 
-                        return False
+                        return ""
                     
                     elif res in {"Y", "N"}:
 
@@ -658,55 +862,15 @@ EOF
 
                 if res == "N":
 
+                    print(f"\n\nSite name > {siteName}")
                     continue
-            
-            newPassword = self.confPassword()
 
-            if newPassword == "":
+                elif res == "Y":
 
-                return False
-            
-            # Encrypt password
+                    self.generateNewPassword(siteName, newAccount, False)
+                    return ""
 
-            passSalt = os.urandom(16).hex()
-            saltStr = passSalt + siteName + newAccount
-            key = base64.b64encode(hashlib.pbkdf2_hmac(self.HASH_TYPE, self.password, saltStr.encode(), self.ITERATIONS))
-            token = Fernet(key).encrypt(newPassword.encode()).decode()
-            
-            # Create new tag
-
-            try:
-
-                tagList = Tools.getTags(self.PASS_LIST, "PW")
-                i = 0
-                pwTag = f"PW{i}"
-
-                while pwTag in tagList:
-
-                    i += 1
-                    pwTag = f"PW{i}"
-
-                # Save
-
-                Tools.saveTagLine(self.PASS_LIST, pwTag, token, "PW")
-                Tools.saveTagLine(self.PASS_LIST, pwTag, passSalt, "SALTS")
-
-            except Exception as ex:
-
-                self.Logger.ShowError(ex)
-                self.logger(self.logLevel.ERROR, "Could not save the password info.")
-                return False
-
-            Tools.saveTagLine(self.DATA_FILE, newAccount, pwTag, self.DATA_TAG, siteName)
-
-            self.logger(self.logLevel.INFO, f"VV Create new data VV")
-            self.logger(self.logLevel.INFO, f"Site   : {siteName}")
-            self.logger(self.logLevel.INFO, f"Account: {newAccount}")
-            self.logger(self.logLevel.INFO, f"PassWd : {newPassword[:4]}******{newPassword[10:]}")
-            self.logger(self.logLevel.INFO, f"^^ Create complete ^^")
-            print("\nNew data created!\n")
-
-            break
+            return newAccount
 
     #
     ##########################
@@ -784,9 +948,21 @@ EOF
 
                 self.clearScreen()
                 return
+            
+            elif newSite == "":
 
-            self.createNewAccount(newSite)
+                print("Site name is empty.")
+                continue
 
+            newAccount = self.createNewAccountName(newSite)
+
+            if newAccount == "":
+
+                return
+            
+            # Generate new password
+
+            self.generateNewPassword(newSite, newAccount)
             break
 
     #
@@ -825,11 +1001,13 @@ EOF
 
                     siteName = self.selectSite()
 
-                    if siteName == "":
+                    if siteName != "":
 
-                        continue
+                        newAccount = self.createNewAccountName(siteName)
 
-                    self.createNewAccount(siteName)
+                        if newAccount != "":
+
+                            self.generateNewPassword(siteName, newAccount)
 
                 except Exception as ex:
 
@@ -891,6 +1069,7 @@ EOF
 
             if accountName != "":
 
+                self.logger(self.logLevel.INFO, f"Account selected [Site: {siteName} / Account: {accountName}]")
                 return siteName, accountName
             
     #
@@ -922,6 +1101,9 @@ EOF
 
             if res == "1":
 
+                # Show saved password
+
+                self.logger(self.logLevel.INFO, "Showing saved password.")
                 password = self.getPassWd(siteName, accountName)
 
                 # Get max string length
@@ -934,8 +1116,118 @@ EOF
                         f" * Account : {accountName}\n"
                         f" * PassWd  : {password}\n"
                         f" *{"".join("-" for _ in range(xLen))}*")
+                
+                while True:
 
-                break
+                    res = input("\nCopy passwrod to clipboard? (y/n) > ")
+                    self.clearScreen()
+                    resU = res.upper()
+
+                    if resU == "Y":
+
+                        # Copy password to clipboard
+
+                        pyperclip.copy(password)
+                        self.logger(self.logLevel.INFO, "Password copied to clipboard.")
+                        print("\nPassword copied to clipboard.\n")
+                        break
+
+                    elif resU == "N":
+
+                        break
+
+                    else:
+
+                        print(f"\n{res} is not on the menu.")
+
+                continue
+
+            elif res == "2":
+
+                # Confirm and change
+
+                while True:
+
+                    print("\nYou cannot access the old password after changing it.")
+                    res = input("\nWill you cahnge the password? (y/n) > ")
+                    resU = res.upper()
+                    self.clearScreen()
+
+                    if resU == "Y":
+
+                        self.generateNewPassword(siteName, accountName, False)
+                        break
+
+                    elif resU == "N":
+
+                        break
+
+                    else:
+
+                        print(f"\n{res} is not on the menu.")
+
+                continue
+
+            elif res == "D":
+
+                # Confirm and delete
+
+                while True:
+
+                    print("\nYou cannot recover data after it has been deleted.")
+                    res = input("\nAre you shure? (y/n) > ")
+                    resU = res.upper()
+                    self.clearScreen()
+
+                    if resU == "Y":
+
+                        # Delete account data
+
+                        try:
+                                
+                            # Find account tag
+
+                            accountTag = Tools.readMapleTag(self.DATA_FILE, accountName, self.DATA_TAG, siteName)
+
+                            # Delete password and account data
+
+                            Tools.deleteTag(self.PASS_LIST, accountTag, "PW")
+                            Tools.deleteTag(self.PASS_LIST, accountTag, "SALTS")
+                            Tools.deleteTag(self.DATA_FILE, accountName, self.DATA_TAG, siteName)
+                            print("Account data deleted.")
+                            self.logger(self.logLevel.INFO, f"Account data has been deleted: [Site: {siteName} / Account: {accountName}]")
+
+                        except Exception as ex:
+
+                            self.logger(self.logLevel.ERROR, "Failed to delete account data.")
+                            self.Logger.ShowError(ex)
+                            break
+
+                        # Delete site data if all accounts have been deleted
+
+                        try:
+
+                            if len(Tools.getTags(self.DATA_FILE, self.DATA_TAG, siteName)) == 0:
+
+                                Tools.deleteHeader(self.DATA_FILE, siteName, self.DATA_TAG)
+                                print("Site data deleted.")
+                                self.logger(self.logLevel.INFO, f"Site data has been delted: {siteName}")
+
+                        except Exception as ex:
+
+                            self.Logger.ShowError(ex)
+
+                        return
+
+                    elif resU == "N":
+
+                        break
+
+                    else:
+
+                        print(f"\n{res} is not on the menu.")
+
+                continue
 
             elif res in self.EXIT_OPS:
 
@@ -954,6 +1246,7 @@ EOF
 
         try:
 
+            self.logger(self.logLevel.INFO, "START")
             password = Tools.readMapleTag(self.DATA_FILE, "PW", "SECURITY_INFO")
 
             # If the first time to use
@@ -1088,7 +1381,7 @@ EOF
         finally:
 
             self.encodeFile()
-            self.logger(self.logLevel.INFO, "\n- - - - - - - - - - - - - - - -")
+            self.logger(self.logLevel.INFO, "END\n- - - - - - - - - - - - - - - -")
             print("\n\n See ya!\n")
 
 #############################

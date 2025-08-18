@@ -37,4 +37,47 @@ It is the same as using a basic Python file.
 - When you use the system for the first time, you need to set a password for login.
 - After the second time or if the setting data file exists, you need to input your password to unlock the system.
 
-:warning: ***If you forgot the password, there is no way to recover data!!*** :rotating_light:
+#### :warning: Warning (Login)
+
+- If you forget your password, there is no way to recover data.
+- Your saved data will not be recovered if you delete the data file to reset your password.
+
+### Main Menu
+
+- Input "1" for the password generation menu.
+- Input "2" for the saved password management menu.
+- Input "S" for the setting menu (not available yet.)
+- Input "Q" for quitting the application.
+
+### Generate Password Menu
+
+- Input "1" for creating a new site and account data, and generate a new password.
+- Input "2" for creating new account data in the saved site data and generate a password.
+- Input "E" to go back to the main menu.
+
+### Manage Password Menu
+
+- Select account data from the list to manage data.
+- Input "1" for showing the password.
+  - You can copy the saved password to the clipboard after showing the password.
+- Input "2" for changing password (not available yet.)
+- Input "D" for delete account data.
+  - Delete saved account data, password, and if there is no account data in the site data, site data.
+- Input "E" for exiting to the main menu.
+
+### Settings Menu
+
+- Not available yet.
+
+### Copy generated password to clipboard
+
+- Input "COPY" at the generated password confirmation screen, generated password will be copied to the clipboard.
+
+## :warning: Caution :rotating_light:
+
+- The number of hashing iterations has been set to 1 for a quick test.
+  - If you use this system or the class in real life, you should set iterations 1,000+ at the initialization of the class.
+- The system is still in progress.
+  - The data structure can be changed in a future update.
+  - The data might be broken due to an unexpected system failure.
+  - You should create a backup just in case.
