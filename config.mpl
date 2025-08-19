@@ -1,13 +1,10 @@
 MAPLE
 H Application settings
+    CWD /home/userName/Documents/GenManPasswords
 E
 H Log settings
     CMD WARN
-    FLE DEBUG
-    H MapleDeEncoder
-        CMD WARN
-        FLE INFO
-    E
+    FLE INFO
     CMT TRACE, DEBUG, INFO, WARN, ERROR, FATAL
 E
 EOF

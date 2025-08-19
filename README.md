@@ -81,3 +81,5 @@ It is the same as using a basic Python file.
   - The data structure can be changed in a future update.
   - The data might be broken due to an unexpected system failure.
   - You should create a backup just in case.
+- Clipboard data can be accessed from other applications.
+  - Be sure to clear the clipboard data if you no longer need it to prevent data from being stolen by malware.

@@ -38,8 +38,8 @@ class Logger:
         # Set output log levels
 
         if path.isfile(self.configFile):
-            self.consoleLogLevel = self.isLogLevel(Tools.readMapleTag(self.configFile, "CMD", "Log settings", "MapleDeEncoder"))
-            self.fileLogLevel = self.isLogLevel(Tools.readMapleTag(self.configFile, "FLE", "Log settings", "MapleDeEncoder"))
+            self.consoleLogLevel = self.isLogLevel(Tools.readMapleTag(self.configFile, "CMD", "Log settings"))
+            self.fileLogLevel = self.isLogLevel(Tools.readMapleTag(self.configFile, "FLE", "Log settings"))
 
     #
     #####################
@@ -148,9 +148,6 @@ class GenManPw:
 
         self.EXIT_OPS = {"Q", "E", "C", "QUIT", "EXIT", "CANCEL"}
         self.CHOICE = [True, False]
-        self.CWD = os.getcwd()
-        self.DATA_FILE = path.join(self.CWD, "datas", "datas.mpl")
-        self.PASS_LIST = path.join(self.CWD, "datas", "pwList.mpl")
         self.DATA_TAG = "DATAS"
         self.HASH_TYPE = "sha256"
         self.ITERATIONS = iterations
@@ -159,6 +156,45 @@ class GenManPw:
         self.logger = self.Logger.logWriter
         self.logLevel = self.Logger.LogLevel
         self.password = "".encode()
+
+        # Get current working directory from configuration file
+
+        cwd = Tools.readMapleTag(path.join(os.getcwd(), "config.mpl"), "CWD", "Application settings")
+
+        if cwd == "":
+
+            # If the directory is not configured
+
+            self.CWD = os.getcwd()
+
+        else:
+
+            if not path.isdir(cwd):
+
+                # Create if it does not exist
+
+                self.logger(self.logLevel.INFO, f"Working directory does not exists: {cwd}")
+
+                try:
+
+                    os.mkdir(cwd)
+                    self.CWD = cwd
+
+                except Exception as ex:
+
+                    self.logger(self.logLevel.WARN, "Failed to create working directory.")
+                    self.Logger.ShowError(ex)
+                    self.CWD = os.getcwd()
+
+            else:
+
+                self.CWD = cwd
+
+        self.logger(self.logLevel.DEBUG, f"CWD is: {self.CWD}")
+
+        self.DATA_FILE = path.join(self.CWD, "datas", "datas.mpl")
+        self.PASS_LIST = path.join(self.CWD, "datas", "pwList.mpl.tmp")
+        self.PASS_LIST_ENC = path.join(self.CWD, "datas", "pwList.mpl")
 
         # Check the OS for clear screen
 
@@ -248,7 +284,7 @@ EOF
     ####################################
     # Encode file
 
-    def encodeFile(self):
+    def encodeFile(self, deleteDecodedFile: bool = False) -> bool:
 
         f = None
 
@@ -262,7 +298,7 @@ EOF
             key = base64.b64encode(hashlib.pbkdf2_hmac(self.HASH_TYPE, self.password, salt.encode(), self.ITERATIONS))
             fileData = Fernet(key).encrypt(fileData).decode()
 
-            f = open(self.PASS_LIST, "w")
+            f = open(self.PASS_LIST_ENC, "w")
             f.write(fileData)
             f.close()
 
@@ -271,26 +307,42 @@ EOF
 
         except Exception as ex:
 
+            self.logger(self.logLevel.WARN, "File encryption failed.")
             self.Logger.ShowError(ex)
-            self.logger(self.logLevel.ERROR, "File encryption failed.")
+            return False
 
         finally:
 
             if f is not None:
-
                 f.close()
+
+        # Delete original file
+
+        if deleteDecodedFile:
+
+            try:
+
+                os.remove(self.PASS_LIST)
+                self.logger(self.logLevel.INFO, "Removed decoded file.")
+
+            except Exception as ex:
+
+                self.logger(self.logLevel.WARN, "Failed to remove decoded file.")
+                self.Logger.ShowError(ex)
+
+        return True
 
     #
     ####################################
     # Decode file
 
-    def decodeFile(self):
+    def decodeFile(self) -> bool:
 
         f = None
 
         try:
 
-            f = open(self.PASS_LIST, "r")
+            f = open(self.PASS_LIST_ENC, "r")
             fileData = f.read()
             f.close()
         
@@ -307,13 +359,30 @@ EOF
 
             self.Logger.ShowError(ex)
             self.logger(self.logLevel.ERROR, "Decryption failed.")
-            raise
+            return False
 
         finally:
 
             if f is not None:
 
                 f.close()
+
+        return True
+    
+    #
+    ####################################
+    # Encode file for save data
+
+    def saveData(self, deleteFile: bool = False) -> None:
+
+        if self.encodeFile(deleteFile):
+
+            self.logger(self.logLevel.INFO, "Data saved.")
+
+        else:
+
+            self.logger(self.logLevel.WARN, "Failed to save data.")
+            print("Failed to save data.")
 
     #
     ####################################
@@ -338,6 +407,7 @@ EOF
 
                 if strPassWd == confPassWd:
 
+                    self.clearScreen()
                     break
 
                 print("\n"
@@ -347,20 +417,20 @@ EOF
             # Save password
 
             binPassWd = strPassWd.encode()
-            salt = hashlib.pbkdf2_hmac(self.HASH_TYPE, binPassWd, b"", self.ITERATIONS)
+            passSalt = os.urandom(16).hex()
+            salt = hashlib.pbkdf2_hmac(self.HASH_TYPE, binPassWd, passSalt.encode(), self.ITERATIONS)
             hashedPw = hashlib.pbkdf2_hmac(self.HASH_TYPE, binPassWd, salt, self.ITERATIONS).hex()
 
             Tools.saveTagLine(self.DATA_FILE, "PW", hashedPw, "SECURITY_INFO")
+            Tools.saveTagLine(self.DATA_FILE, "SALT", passSalt, "SECURITY_INFO")
 
-            # Re-encode password file
-
+            self.logger(self.logLevel.INFO, "Hashed password saved.")
             self.password = binPassWd
+            self.encodeFile()
 
             # Log
 
             self.logger(self.logLevel.INFO, "System login password updated.")
-            self.logger(self.logLevel.INFO, f"Password: *******{strPassWd[7:]}")
-            self.logger(self.logLevel.INFO, f"Hashed  : {hashedPw}")
             print("\nPassword updated!")
 
             return hashedPw
@@ -436,25 +506,25 @@ EOF
             symList = f.readlines()
             f.close()
 
-            self.logger(self.logLevel.INFO, "Symbol list loaded")
+            self.logger(self.logLevel.DEBUG, "Symbol list loaded")
 
             f = open(path.join(self.CWD, "NameList.txt"))
             nameList = f.readlines()
             f.close()
 
-            self.logger(self.logLevel.INFO, "Names list loaded")
+            self.logger(self.logLevel.DEBUG, "Names list loaded")
 
             f = open(path.join(self.CWD, "WordList.txt"))
             wordList = f.readlines()
             f.close()
 
-            self.logger(self.logLevel.INFO, "Word list loaded")
+            self.logger(self.logLevel.DEBUG, "Word list loaded")
 
             f = open(path.join(self.CWD, "VerbList.txt"))
             verbList = f.readlines()
             f.close()
 
-            self.logger(self.logLevel.INFO, "Verbs list loaded")
+            self.logger(self.logLevel.DEBUG, "Verbs list loaded")
 
         except Exception as ex:
 
@@ -500,7 +570,15 @@ EOF
 
             # Name
 
-            pwStr += self.randCap(random.choice(nameList).rstrip("\n")) + random.choice(["\'s", ""])
+            pwStr += self.randCap(random.choice(nameList).rstrip("\n"))
+            
+            if len(pwStr) < 14:
+
+                pwStr += "\'s"
+
+            else:
+
+                pwStr += random.choice(["\'s", ""])
 
             # Symbol
 
@@ -682,7 +760,7 @@ EOF
                     print("Search string empty.")
                     continue
 
-                # Get serch string
+                # Get search string
 
                 self.logger(self.logLevel.INFO, resU)
                 searchStr = res[7:]
@@ -720,7 +798,7 @@ EOF
     ##########################
     # Create new account
     
-    def generateNewPassword(self, siteName: str, accountName: str, newData: bool | None = True) -> bool:
+    def generateNewPassword(self, siteName: str, accountName: str, newData: bool = True) -> bool:
 
         newOrEdit = ("Edit", "Create new")
         self.logger(self.logLevel.INFO, f"{newOrEdit[newData]} data.")
@@ -800,17 +878,22 @@ EOF
 
                 pwTag = Tools.readMapleTag(self.DATA_FILE, accountName, self.DATA_TAG, siteName)
 
-            # Save
-
-            Tools.saveTagLine(self.PASS_LIST, pwTag, token, "PW")
-            Tools.saveTagLine(self.PASS_LIST, pwTag, passSalt, "SALTS")
+            # Log results
 
             self.logger(self.logLevel.INFO, f"VV Create new data VV")
             self.logger(self.logLevel.INFO, f"Site   : {siteName}")
             self.logger(self.logLevel.INFO, f"Account: {accountName}")
             self.logger(self.logLevel.INFO, f"PassWd : {newPassword[:4]}******{newPassword[10:]}")
             self.logger(self.logLevel.INFO, f"^^ Create complete ^^")
+
             print(("\nPassword updated", "\nNew data created!")[newData])
+
+            # Save
+
+            Tools.saveTagLine(self.PASS_LIST, pwTag, token, "PW")
+            Tools.saveTagLine(self.PASS_LIST, pwTag, passSalt, "SALTS")
+
+            self.saveData()
 
         except Exception as ex:
 
@@ -1053,7 +1136,7 @@ EOF
         
     #
     ##########################
-    # Password serch menu
+    # Password search menu
 
     def selectAccount(self) -> list[str]:
         
@@ -1078,13 +1161,12 @@ EOF
 
     def managePassword(self) -> None:
 
+        self.logger(self.logLevel.INFO, f"Manage Password Menu")
         siteName, accountName = self.selectAccount()
 
         if siteName == "":
 
             return
-        
-        self.logger(self.logLevel.INFO, f"Manage password. Site: {siteName} / Account: {accountName}")
         
         while True:
 
@@ -1119,7 +1201,7 @@ EOF
                 
                 while True:
 
-                    res = input("\nCopy passwrod to clipboard? (y/n) > ")
+                    res = input("\nCopy password to clipboard? (y/n) > ")
                     self.clearScreen()
                     resU = res.upper()
 
@@ -1149,7 +1231,7 @@ EOF
                 while True:
 
                     print("\nYou cannot access the old password after changing it.")
-                    res = input("\nWill you cahnge the password? (y/n) > ")
+                    res = input("\nWill you change the password? (y/n) > ")
                     resU = res.upper()
                     self.clearScreen()
 
@@ -1175,7 +1257,7 @@ EOF
                 while True:
 
                     print("\nYou cannot recover data after it has been deleted.")
-                    res = input("\nAre you shure? (y/n) > ")
+                    res = input("\nAre you sure? (y/n) > ")
                     resU = res.upper()
                     self.clearScreen()
 
@@ -1196,6 +1278,8 @@ EOF
                             Tools.deleteTag(self.DATA_FILE, accountName, self.DATA_TAG, siteName)
                             print("Account data deleted.")
                             self.logger(self.logLevel.INFO, f"Account data has been deleted: [Site: {siteName} / Account: {accountName}]")
+                            
+                            self.saveData()
 
                         except Exception as ex:
 
@@ -1211,7 +1295,7 @@ EOF
 
                                 Tools.deleteHeader(self.DATA_FILE, siteName, self.DATA_TAG)
                                 print("Site data deleted.")
-                                self.logger(self.logLevel.INFO, f"Site data has been delted: {siteName}")
+                                self.logger(self.logLevel.INFO, f"Site data has been deleted: {siteName}")
 
                         except Exception as ex:
 
@@ -1231,12 +1315,85 @@ EOF
 
             elif res in self.EXIT_OPS:
 
-                self.clearScreen()
+                self.logger(self.logLevel.INFO, "Exit Manage Password Menu.")
                 return
             
             else:
 
                 print(f"\n{res} is not on the menu.\n")
+
+    #
+    ##########################
+    # Settings Menu
+
+    def settingsMenu(self) -> bool:
+
+        self.logger(self.logLevel.INFO, "Settings menu loaded.")
+
+        while True:
+
+            print("\n"
+                  " * Settings *\n\n"
+                  "1) Change Login Password\n"
+                  "X) Export data\n"
+                  "I) Import data\n"
+                  "E) Exit to the main menu\n")
+            res = input("Will you... > ")
+            resU = res.upper()
+            self.clearScreen()
+
+            if resU in self.EXIT_OPS:
+
+                self.logger(self.logLevel.INFO, "Exit settings menu.")
+                return False
+            
+            elif resU == "1":
+
+                self.logger(self.logLevel.INFO, "Changing login password.")
+
+                try:
+
+                    password = Tools.readMapleTag(self.DATA_FILE, "PW", "SECURITY_INFO")
+                    
+                    for i in range(3):
+
+                        strPassWd = getpass("\nCurrent password: ")
+
+                        binPassWd = strPassWd.encode()
+                        passSalt = Tools.readMapleTag(self.DATA_FILE, "SALT", "SECURITY_INFO")
+                        salt = hashlib.pbkdf2_hmac(self.HASH_TYPE, binPassWd, passSalt.encode(), self.ITERATIONS)
+                        hashedPw = hashlib.pbkdf2_hmac(self.HASH_TYPE, binPassWd, salt, self.ITERATIONS).hex()
+
+                        isMatch = hashedPw == password
+
+                        if isMatch:
+
+                            self.password = binPassWd
+                            self.logger(self.logLevel.INFO, "Authenticated.")
+                            break
+
+                        print("\n* Password incorrect.\n"
+                            "* Please try again.")
+                        self.logger(self.logLevel.INFO, f"Authentication failed {i + 1}")
+
+                    if not isMatch:
+
+                        print("\n\n* Authentication failed *\n\n"
+                              "And you are kicked out.")
+                        self.logger(self.logLevel.INFO, "Failed to authenticate to change login password")
+                        return True
+                    
+                    self.clearScreen()
+                    self.changeSysPasswd()
+
+                except Exception as ex:
+
+                    self.Logger.ShowError(ex)
+
+            else:
+
+                print(f"{res} is not on the menu.")
+                continue
                 
     #
     ##########################
@@ -1245,68 +1402,74 @@ EOF
     def mainMenu(self) -> int:
 
         try:
+                
+            try:
 
-            self.logger(self.logLevel.INFO, "START")
-            password = Tools.readMapleTag(self.DATA_FILE, "PW", "SECURITY_INFO")
+                self.logger(self.logLevel.INFO, "START")
+                password = Tools.readMapleTag(self.DATA_FILE, "PW", "SECURITY_INFO")
 
-            # If the first time to use
-
-            if password == "":
-
-                self.logger(self.logLevel.INFO, "First time to login.")
-
-                password = self.changeSysPasswd()
+                # If the first time to use
 
                 if password == "":
 
-                    return
+                    self.logger(self.logLevel.INFO, "First time to login.")
+
+                    password = self.changeSysPasswd()
+
+                    if password == "":
+
+                        return -1
+                    
+                    self.encodeFile(True)
+
+                # Login to the system
+                    
+                for i in range(3):
+
+                    strPassWd = getpass("\nPassword: ")
+
+                    binPassWd = strPassWd.encode()
+                    passSalt = Tools.readMapleTag(self.DATA_FILE, "SALT", "SECURITY_INFO")
+                    salt = hashlib.pbkdf2_hmac(self.HASH_TYPE, binPassWd, passSalt.encode(), self.ITERATIONS)
+                    hashedPw = hashlib.pbkdf2_hmac(self.HASH_TYPE, binPassWd, salt, self.ITERATIONS).hex()
+
+                    isMatch = hashedPw == password
+
+                    if isMatch:
+
+                        self.logger(self.logLevel.INFO, "Password match.")
+                        self.password = binPassWd
+                        break
+
+                    print("\n* Password incorrect.\n"
+                        "* Please try again.")
+                    self.logger(self.logLevel.INFO, f"Login failed {i + 1}")
+
+                if not isMatch:
+
+                    print("\n* Authentication failed *")
+                    return -9
                 
-                self.encodeFile()
+                elif self.decodeFile():
 
-        except Exception as ex:
+                    self.logger(self.logLevel.INFO, "System login.")
+                    print("Password correct!")
 
-            self.Logger.ShowError(ex)
-            self.logger(self.logLevel.ERROR, "Could not get login info.")
-            
-            return
+                else:
 
-        # Login to the system
+                    print("\nFaliled to login.")
+                    return -1
+                
+            except Exception as ex:
 
-        for i in range(3):
+                self.logger(self.logLevel.FATAL, "Failed to startup.")
+                self.Logger.ShowError(ex)
+                return -98
 
-            strPassWd = getpass("\nPassword: ")
+            try:
 
-            binPassWd = strPassWd.encode()
-            salt = hashlib.pbkdf2_hmac(self.HASH_TYPE, binPassWd, b"", self.ITERATIONS)
-            hashedPw = hashlib.pbkdf2_hmac(self.HASH_TYPE, binPassWd, salt, self.ITERATIONS).hex()
-
-            isMatch = hashedPw == password
-
-            if isMatch:
-
-                self.password = strPassWd.encode()
-                self.logger(self.logLevel.INFO, "System login.")
-                break
-
-            print("\n* Password incorrect.\n"
-                  "* Please try again.")
-            self.logger(self.logLevel.INFO, f"Login failed {i + 1}")
-
-        if not isMatch:
-
-            print("\n* Authentication failed *\n")
-
-            return
-        
-        else:
-
-            print("Password correct!")
-
-        try:
-
-            self.decodeFile()
-            self.clearScreen()
-            print("""
+                self.clearScreen()
+                print("""
  Welcome to...
 
 *--------------------------------------------------------------------*
@@ -1336,53 +1499,58 @@ EOF
 *--------------------------------------------------------------------*
 
 """)
-            
-            while True:
+                
+                while True:
 
-                self.logger(self.logLevel.INFO, "Main menu loaded.")
+                    self.logger(self.logLevel.INFO, "Main menu loaded.")
 
-                print("\n\n"
-                    " * Main Menu *\n\n"
-                    " 1) Generate Password\n"
-                    " 2) Manage Password\n"
-                    " S) Settings\n"
-                    " Q) Quit\n")
-                select = input("Select menu > ").upper()
-                self.clearScreen()
+                    print("\n\n"
+                        " * Main Menu *\n\n"
+                        " 1) Generate Password\n"
+                        " 2) Manage Password\n"
+                        " S) Settings\n"
+                        " Q) Quit\n")
+                    select = input("Select menu > ").upper()
+                    self.clearScreen()
 
-                if select == "1":
+                    if select == "1":
 
-                    self.GeneratePasswordMain()
+                        self.GeneratePasswordMain()
 
-                elif select == "2":
+                    elif select == "2":
 
-                    self.managePassword()
+                        self.managePassword()
 
-                elif select == "S":
+                    elif select == "S":
 
-                    print("Coming soon...")
+                        if self.settingsMenu():
 
-                elif select in self.EXIT_OPS:
+                            return -9
 
-                    self.logger(self.logLevel.INFO, "System logout.")
-                    return 0
+                    elif select in self.EXIT_OPS:
 
-                else:
+                        self.logger(self.logLevel.INFO, "System logout.")
+                        return 0
 
-                    print(f"{select} is not in the menu.\n")
+                    else:
 
-        except Exception as ex:
+                        print(f"\n{select} is not on the menu.")
 
-            self.Logger.ShowError(ex)
-            self.logger(self.logLevel.FATAL, "Could not handled the error.")
-            self.logger(self.logLevel.FATAL, "Exit the program.")
-            return
+            except Exception as ex:
+
+                self.Logger.ShowError(ex)
+                self.logger(self.logLevel.FATAL, "Could not handled the error.")
+                self.logger(self.logLevel.FATAL, "Exit the program.")
+                return -99
+
+            finally:
+
+                self.encodeFile(True)
 
         finally:
 
-            self.encodeFile()
             self.logger(self.logLevel.INFO, "END\n- - - - - - - - - - - - - - - -")
-            print("\n\n See ya!\n")
+            print(f"\n\n {random.choice(["See ya!", "Bye!", "Adios!", "Hasta luego!", "Пока!", "Sayonara!"])}\n")
 
 #############################
 # Main method (test)
@@ -1391,11 +1559,6 @@ gmp = GenManPw(1)
 gmp.mainMenu()
 
 # TODO_List:
-
-# Manage menu
-    # Edit passwords
-    # Delete datas
-    # etc...
 
 # Settings menu
     # Change system password
