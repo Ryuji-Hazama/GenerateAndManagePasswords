@@ -2,7 +2,7 @@
 
 &nbsp;&nbsp;&nbsp;&nbsp;This system generates the password strings randomly and stores them on your computer in a safe way, powered by Python.
 
-&nbsp;&nbsp;&nbsp;&nbsp;:warning: **The current version is UNSTABLE because it is still in progress.**
+:warning: **The current version is UNSTABLE because it is still in progress.**
 
 ## Requirement
 
