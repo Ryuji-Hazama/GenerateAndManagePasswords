@@ -1,10 +1,8 @@
-version: "3.9"
-
 services:
   genmanpw:
-    image: genmanpw:latest
-    container_name: genmanpw
+    image: ryujihazama/genmanpw
     stdin_open: true
     tty: true
     volumes:
-      - ~/Documents/Python/GenManPasswords:/app/workDir
+      - ~/Documents/GenManPw:/app/workDir
+
