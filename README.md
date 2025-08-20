@@ -2,7 +2,7 @@
 
 &nbsp;&nbsp;&nbsp;&nbsp;This system generates the password strings randomly and stores them on your computer in a safe way, powered by Python.
 
-:warning: **The current version is UNSTABLE because it is still in progress.**
+&nbsp;&nbsp;&nbsp;&nbsp;:warning: **The current version is UNSTABLE because it is still in progress.**
 
 ## Requirement
 
@@ -72,6 +72,11 @@ It is the same as using a basic Python file.
 ### Copy generated password to clipboard
 
 - Input "COPY" at the generated password confirmation screen, generated password will be copied to the clipboard.
+
+### If you are a Docker user
+
+- `docker pull ryujihazama/genmanpw` then run with
+- `docker run -ti --rm -v local/directory:/app/workDir genmanpw`
 
 ## :warning: Caution :rotating_light:
 

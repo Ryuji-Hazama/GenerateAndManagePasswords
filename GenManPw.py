@@ -19,7 +19,7 @@ class Logger:
     def __init__(self, func = ""):
 
         self.CWD = os.getcwd()
-        self.logfile = path.join(self.CWD, "logs", f"log_{datetime.datetime.now():%Y%m%d}.log")
+        self.logfile = path.join(self.CWD, "workDir", "logs", f"log_{datetime.datetime.now():%Y%m%d}.log")
         self.configFile = path.join(self.CWD, "config.mpl")
         self.intMaxValue = 4294967295
         self.consoleLogLevel = -1
@@ -30,8 +30,8 @@ class Logger:
         ############################
         # Check log directory
 
-        if not path.isdir(path.join(self.CWD, "logs")):
-            mkdir(path.join(self.CWD, "logs"))
+        if not path.isdir(path.join(self.CWD, "workDir", "logs")):
+            mkdir(path.join(self.CWD, "workDir", "logs"))
 
         #
         ############################
@@ -192,9 +192,9 @@ class GenManPw:
 
         self.logger(self.logLevel.DEBUG, f"CWD is: {self.CWD}")
 
-        self.DATA_FILE = path.join(self.CWD, "datas", "datas.mpl")
-        self.PASS_LIST = path.join(self.CWD, "datas", "pwList.mpl.tmp")
-        self.PASS_LIST_ENC = path.join(self.CWD, "datas", "pwList.mpl")
+        self.PASS_LIST = path.join(self.CWD, "temp", "pwList.mpl.tmp")
+        self.DATA_FILE = path.join(self.CWD, "workDir", "datas", "datas.mpl")
+        self.PASS_LIST_ENC = path.join(self.CWD, "workDir", "datas", "pwList.mpl")
 
         # Check the OS for clear screen
 
@@ -208,9 +208,9 @@ class GenManPw:
 
         # Check data file
 
-        if not path.isdir(path.join(self.CWD, "datas")):
+        if not path.isdir(path.join(self.CWD, "workDir", "datas")):
 
-            os.mkdir(path.join(self.CWD, "datas"))
+            os.mkdir(path.join(self.CWD, "workDir", "datas"))
 
         if not path.isfile(self.DATA_FILE):
 
@@ -370,6 +370,34 @@ EOF
         return True
     
     #
+    ##########################
+    # Decode password
+
+    def getPassWd(self, siteName: str, accountName: str):
+
+        try:
+
+            # Get account tag
+
+            accountTag = Tools.readMapleTag(self.DATA_FILE, accountName, self.DATA_TAG, siteName)
+
+            # Decrypt password
+
+            passWdToken = Tools.readMapleTag(self.PASS_LIST, accountTag, "PW").encode()
+            salt = Tools.readMapleTag(self.PASS_LIST, accountTag, "SALTS") + siteName + accountName
+
+            key = base64.b64encode(hashlib.pbkdf2_hmac(self.HASH_TYPE, self.password, salt.encode(), self.ITERATIONS))
+            return Fernet(key).decrypt(passWdToken).decode()
+
+        except Exception as ex:
+
+            self.Logger.ShowError(ex)
+
+        self.logger(self.logLevel.WARN, f"Failed to get password string. Site: {siteName} / Account: {accountName}")
+        print("\nFailed to get password.")
+        return ""
+
+    #
     ####################################
     # Encode file for save data
 
@@ -386,6 +414,26 @@ EOF
 
     #
     ####################################
+    # Encode password string and save
+
+    def encodePassword(self, newPassword: str, pwTag: str, siteAndAccount: str, keyPassword: bytes) -> bool:
+
+        # Encrypt password
+
+        passSalt = os.urandom(16).hex()
+        saltStr = passSalt + siteAndAccount
+        key = base64.b64encode(hashlib.pbkdf2_hmac(self.HASH_TYPE, keyPassword, saltStr.encode(), self.ITERATIONS))
+        token = Fernet(key).encrypt(newPassword.encode()).decode()
+    
+        # Save
+
+        Tools.saveTagLine(self.PASS_LIST, pwTag, token, "PW")
+        Tools.saveTagLine(self.PASS_LIST, pwTag, passSalt, "SALTS")
+
+        self.saveData()
+
+    #
+    ####################################
     # Change system password
 
     def changeSysPasswd(self) -> str:
@@ -398,8 +446,7 @@ EOF
 
                 if len(strPassWd) < 8:
 
-                    print("\n"
-                        "* PASSWORD MUST BE OVER 8 CHARACTERS.")
+                    print("\n* PASSWORD MUST BE OVER 8 CHARACTERS.")
                     
                     continue
 
@@ -414,17 +461,28 @@ EOF
                         "* PASSWORD DOESN'T MATCH\n"
                         "* Please try again.")
                 
-            # Save password
+            # Hash password
 
             binPassWd = strPassWd.encode()
             passSalt = os.urandom(16).hex()
             salt = hashlib.pbkdf2_hmac(self.HASH_TYPE, binPassWd, passSalt.encode(), self.ITERATIONS)
             hashedPw = hashlib.pbkdf2_hmac(self.HASH_TYPE, binPassWd, salt, self.ITERATIONS).hex()
 
+            # Re-hash saved passwords
+
+            for siteName in Tools.getHeaders(self.DATA_FILE, self.DATA_TAG):
+                for accountName in Tools.getTags(self.DATA_FILE, self.DATA_TAG, siteName):
+
+                    savedPass = self.getPassWd(siteName, accountName)
+                    self.encodePassword(savedPass, Tools.readMapleTag(self.DATA_FILE, accountName, self.DATA_TAG, siteName),
+                                        siteName + accountName, binPassWd)
+
+            # Save new password
+
             Tools.saveTagLine(self.DATA_FILE, "PW", hashedPw, "SECURITY_INFO")
             Tools.saveTagLine(self.DATA_FILE, "SALT", passSalt, "SECURITY_INFO")
 
-            self.logger(self.logLevel.INFO, "Hashed password saved.")
+            self.logger(self.logLevel.INFO, "Hashed new password saved.")
             self.password = binPassWd
             self.encodeFile()
 
@@ -842,13 +900,6 @@ EOF
 
         try:
             
-            # Encrypt password
-
-            passSalt = os.urandom(16).hex()
-            saltStr = passSalt + siteName + accountName
-            key = base64.b64encode(hashlib.pbkdf2_hmac(self.HASH_TYPE, self.password, saltStr.encode(), self.ITERATIONS))
-            token = Fernet(key).encrypt(newPassword.encode()).decode()
-            
             if newData:
                     
                 # Create new tag
@@ -878,6 +929,10 @@ EOF
 
                 pwTag = Tools.readMapleTag(self.DATA_FILE, accountName, self.DATA_TAG, siteName)
 
+            # Encode and save
+
+            self.encodePassword(newPassword, pwTag, siteName + accountName, self.password)
+
             # Log results
 
             self.logger(self.logLevel.INFO, f"VV Create new data VV")
@@ -887,13 +942,6 @@ EOF
             self.logger(self.logLevel.INFO, f"^^ Create complete ^^")
 
             print(("\nPassword updated", "\nNew data created!")[newData])
-
-            # Save
-
-            Tools.saveTagLine(self.PASS_LIST, pwTag, token, "PW")
-            Tools.saveTagLine(self.PASS_LIST, pwTag, passSalt, "SALTS")
-
-            self.saveData()
 
         except Exception as ex:
 
@@ -1105,34 +1153,6 @@ EOF
             else:
 
                 print(f"\n{select} is not on the menu.\n")
-
-    #
-    ##########################
-    # Show password
-
-    def getPassWd(self, siteName: str, accountName: str):
-
-        try:
-
-            # Get account tag
-
-            accountTag = Tools.readMapleTag(self.DATA_FILE, accountName, self.DATA_TAG, siteName)
-
-            # Decrypt password
-
-            passWdToken = Tools.readMapleTag(self.PASS_LIST, accountTag, "PW").encode()
-            salt = Tools.readMapleTag(self.PASS_LIST, accountTag, "SALTS") + siteName + accountName
-
-            key = base64.b64encode(hashlib.pbkdf2_hmac(self.HASH_TYPE, self.password, salt.encode(), self.ITERATIONS))
-            return Fernet(key).decrypt(passWdToken).decode()
-
-        except Exception as ex:
-
-            self.Logger.ShowError(ex)
-
-        self.logger(self.logLevel.WARN, f"Failed to get password string. Site: {siteName} / Account: {accountName}")
-        print("\nFailed to get password.")
-        return ""
         
     #
     ##########################

@@ -1,6 +1,6 @@
 MAPLE
 H Application settings
-    CWD /home/userName/Documents/GenManPasswords
+    CWD /app
 E
 H Log settings
     CMD WARN
