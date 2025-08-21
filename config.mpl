@@ -1,6 +1,6 @@
 MAPLE
 H Application settings
-    CWD /app
+    CWD /your/working/directory
 E
 H Log settings
     CMD WARN

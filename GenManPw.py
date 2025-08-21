@@ -6,9 +6,10 @@ from getpass import getpass
 import hashlib
 import inspect
 import os
-from os import path, mkdir, getpid
+from os import path, getpid
 import pyperclip
 import random
+import shutil
 import sys
 import Tools
 import traceback
@@ -16,11 +17,11 @@ import readline
 
 class Logger:
 
-    def __init__(self, func = ""):
+    def __init__(self, func: str = "", workingDirectory: str = ""):
 
         self.CWD = os.getcwd()
-        self.logfile = path.join(self.CWD, "workDir", "logs", f"log_{datetime.datetime.now():%Y%m%d}.log")
-        self.configFile = path.join(self.CWD, "config.mpl")
+        self.logfile = path.join(self.CWD, workingDirectory, "logs", f"log_{datetime.datetime.now():%Y%m%d}.log")
+        self.configFile = path.join(self.CWD, workingDirectory, "config.mpl")
         self.intMaxValue = 4294967295
         self.consoleLogLevel = -1
         self.fileLogLevel = -1
@@ -31,7 +32,7 @@ class Logger:
         # Check log directory
 
         if not path.isdir(path.join(self.CWD, "workDir", "logs")):
-            mkdir(path.join(self.CWD, "workDir", "logs"))
+            os.makedirs(path.join(self.CWD, "workDir", "logs"))
 
         #
         ############################
@@ -146,20 +147,48 @@ class GenManPw:
 
     def __init__(self, iterations):
 
+        cwd = os.getcwd()
+        workDir = "workDir"
+        configFile = "config.mpl"
+
+        # Check configuration directory
+
+        if not path.isdir(path.join(cwd, workDir)):
+
+            os.mkdir(path.join(cwd, workDir))
+
+        # Check configuration file
+
+        if not path.isfile(path.join(cwd, workDir, configFile)) and path.isfile(path.join(cwd, configFile)):
+
+            shutil.copy(path.join(cwd, configFile), path.join(cwd, workDir, configFile))
+
+        # Set const
+
         self.EXIT_OPS = {"Q", "E", "C", "QUIT", "EXIT", "CANCEL"}
         self.CHOICE = [True, False]
         self.DATA_TAG = "DATAS"
         self.HASH_TYPE = "sha256"
         self.ITERATIONS = iterations
 
-        self.Logger = Logger("GenManPw")
+        self.Logger = Logger("GenManPw", workDir)
         self.logger = self.Logger.logWriter
         self.logLevel = self.Logger.LogLevel
         self.password = "".encode()
 
+        # Check the OS for clear screen
+
+        if sys.platform.startswith("win"):
+
+            self.clearCommand = "cls"
+
+        else:
+
+            self.clearCommand = "clear"
+
         # Get current working directory from configuration file
 
-        cwd = Tools.readMapleTag(path.join(os.getcwd(), "config.mpl"), "CWD", "Application settings")
+        cwd = Tools.readMapleTag(path.join(os.getcwd(), workDir, configFile), "CWD", "Application settings")
 
         if cwd == "":
 
@@ -193,24 +222,22 @@ class GenManPw:
         self.logger(self.logLevel.DEBUG, f"CWD is: {self.CWD}")
 
         self.PASS_LIST = path.join(self.CWD, "temp", "pwList.mpl.tmp")
-        self.DATA_FILE = path.join(self.CWD, "workDir", "datas", "datas.mpl")
-        self.PASS_LIST_ENC = path.join(self.CWD, "workDir", "datas", "pwList.mpl")
+        self.DATA_FILE = path.join(self.CWD, workDir, "datas", "datas.mpl")
+        self.PASS_LIST_ENC = path.join(self.CWD, workDir, "datas", "pwList.mpl")
 
-        # Check the OS for clear screen
+        # Check data directoy
 
-        if sys.platform.startswith("win"):
+        if not path.isdir(path.join(self.CWD, workDir, "datas")):
 
-            self.clearCommand = "cls"
+            os.makedirs(path.join(self.CWD, workDir, "datas"))
 
-        else:
+        # Check temp directory
 
-            self.clearCommand = "clear"
+        if not path.isdir(path.join(self.CWD, "temp")):
 
-        # Check data file
+            os.mkdir(path.join(self.CWD, "temp"))
 
-        if not path.isdir(path.join(self.CWD, "workDir", "datas")):
-
-            os.mkdir(path.join(self.CWD, "workDir", "datas"))
+        # Check data files
 
         if not path.isfile(self.DATA_FILE):
 
@@ -654,42 +681,59 @@ EOF
 
         self.logger(self.logLevel.INFO, "Auto generate password.")
 
-        while True:
-
-            newPassword = self.generatePasswordStr()
-            question = random.choice(["You like it?", "How about this? "])
+        try:
 
             while True:
 
-                print(f"\nNew password: {newPassword}")
-                res = input(f"\n{question} (y/n) > ")
-                resU = res.upper()
-                self.clearScreen()
+                newPassword = self.generatePasswordStr()
+                question = random.choice(["You like it?", "How about this? "])
 
-                if resU == "Y":
+                while True:
 
-                    return newPassword
-                
-                elif resU == "N":
-
-                    break
-
-                elif resU == "COPY":
-
-                    pyperclip.copy(newPassword)
+                    print(f"\nNew password: {newPassword}")
+                    res = input(f"\n{question} (y/n) > ")
+                    resU = res.upper()
                     self.clearScreen()
-                    self.logger(self.logLevel.INFO, "Password copied to clipboard.")
-                    print("Password copied to clipboard.")
-                    continue
 
-                elif resU in self.EXIT_OPS:
+                    if resU == "Y":
 
-                    return ""
-                
-                else:
+                        return newPassword
+                    
+                    elif resU == "N":
 
-                    print(f"\n{res} is not on the menu.")
-                    continue
+                        break
+
+                    elif resU == "COPY":
+
+                        try:
+
+                            pyperclip.copy(newPassword)
+                            self.clearScreen()
+                            self.logger(self.logLevel.INFO, "Password copied to clipboard.")
+                            print("Password copied to clipboard.")
+
+                        except Exception as ex:
+
+                            self.Logger.ShowError(ex)
+                            print("\nCopy password to clipboard failed.")
+
+                        continue
+
+                    elif resU in self.EXIT_OPS:
+
+                        return ""
+                    
+                    else:
+
+                        print(f"\n{res} is not on the menu.")
+                        continue
+
+        except Exception as ex:
+
+            self.logger(self.logLevel.ERROR, "Failed to generate password.")
+            self.Logger.ShowError(ex)
+
+        return ""
 
     #
     ##########################
@@ -732,10 +776,18 @@ EOF
 
                     elif resU == "COPY":
 
-                        pyperclip.copy(pwStr)
-                        self.clearScreen()
-                        self.logger(self.logLevel.INFO, "Password copied to clipboard.")
-                        print("\nPassword copied to clipboard.")
+                        try:
+                                
+                            pyperclip.copy(pwStr)
+                            self.clearScreen()
+                            self.logger(self.logLevel.INFO, "Password copied to clipboard.")
+                            print("\nPassword copied to clipboard.")
+
+                        except Exception as ex:
+
+                            self.Logger.ShowError(ex)
+                            print("\nCopy password to clipboard failed.")
+
                         continue
 
                     else:
@@ -1181,166 +1233,189 @@ EOF
 
     def managePassword(self) -> None:
 
-        self.logger(self.logLevel.INFO, f"Manage Password Menu")
-        siteName, accountName = self.selectAccount()
-
-        if siteName == "":
-
-            return
-        
-        while True:
-
-            print(f"\n"
-                  f" * Manage Password *\n\n"
-                  f"  Site   : {siteName}\n"
-                  f"  Account: {accountName}\n\n"
-                  f"1) Show password\n"
-                  f"2) Change password\n"
-                  f"D) Delete data\n"
-                  f"E) Exit\n\n")
-            res = input("Will you... > ").upper()
-            self.clearScreen()
-
-            if res == "1":
-
-                # Show saved password
-
-                self.logger(self.logLevel.INFO, "Showing saved password.")
-                password = self.getPassWd(siteName, accountName)
-
-                # Get max string length
-
-                xLen = max([len(siteName), len(accountName), len(password)]) + 11
-
-                print("\n"
-                        f" *{"".join("-" for _ in range(xLen))}*\n"
-                        f" * Site    : {siteName}\n"
-                        f" * Account : {accountName}\n"
-                        f" * PassWd  : {password}\n"
-                        f" *{"".join("-" for _ in range(xLen))}*")
+        try:
                 
-                while True:
+            self.logger(self.logLevel.INFO, f"Manage Password Menu")
+            siteName, accountName = self.selectAccount()
 
-                    res = input("\nCopy password to clipboard? (y/n) > ")
-                    self.clearScreen()
-                    resU = res.upper()
+            if siteName == "":
 
-                    if resU == "Y":
-
-                        # Copy password to clipboard
-
-                        pyperclip.copy(password)
-                        self.logger(self.logLevel.INFO, "Password copied to clipboard.")
-                        print("\nPassword copied to clipboard.\n")
-                        break
-
-                    elif resU == "N":
-
-                        break
-
-                    else:
-
-                        print(f"\n{res} is not on the menu.")
-
-                continue
-
-            elif res == "2":
-
-                # Confirm and change
-
-                while True:
-
-                    print("\nYou cannot access the old password after changing it.")
-                    res = input("\nWill you change the password? (y/n) > ")
-                    resU = res.upper()
-                    self.clearScreen()
-
-                    if resU == "Y":
-
-                        self.generateNewPassword(siteName, accountName, False)
-                        break
-
-                    elif resU == "N":
-
-                        break
-
-                    else:
-
-                        print(f"\n{res} is not on the menu.")
-
-                continue
-
-            elif res == "D":
-
-                # Confirm and delete
-
-                while True:
-
-                    print("\nYou cannot recover data after it has been deleted.")
-                    res = input("\nAre you sure? (y/n) > ")
-                    resU = res.upper()
-                    self.clearScreen()
-
-                    if resU == "Y":
-
-                        # Delete account data
-
-                        try:
-                                
-                            # Find account tag
-
-                            accountTag = Tools.readMapleTag(self.DATA_FILE, accountName, self.DATA_TAG, siteName)
-
-                            # Delete password and account data
-
-                            Tools.deleteTag(self.PASS_LIST, accountTag, "PW")
-                            Tools.deleteTag(self.PASS_LIST, accountTag, "SALTS")
-                            Tools.deleteTag(self.DATA_FILE, accountName, self.DATA_TAG, siteName)
-                            print("Account data deleted.")
-                            self.logger(self.logLevel.INFO, f"Account data has been deleted: [Site: {siteName} / Account: {accountName}]")
-                            
-                            self.saveData()
-
-                        except Exception as ex:
-
-                            self.logger(self.logLevel.ERROR, "Failed to delete account data.")
-                            self.Logger.ShowError(ex)
-                            break
-
-                        # Delete site data if all accounts have been deleted
-
-                        try:
-
-                            if len(Tools.getTags(self.DATA_FILE, self.DATA_TAG, siteName)) == 0:
-
-                                Tools.deleteHeader(self.DATA_FILE, siteName, self.DATA_TAG)
-                                print("Site data deleted.")
-                                self.logger(self.logLevel.INFO, f"Site data has been deleted: {siteName}")
-
-                        except Exception as ex:
-
-                            self.Logger.ShowError(ex)
-
-                        return
-
-                    elif resU == "N":
-
-                        break
-
-                    else:
-
-                        print(f"\n{res} is not on the menu.")
-
-                continue
-
-            elif res in self.EXIT_OPS:
-
-                self.logger(self.logLevel.INFO, "Exit Manage Password Menu.")
                 return
             
-            else:
+        except Exception as ex:
 
-                print(f"\n{res} is not on the menu.\n")
+            self.logger(self.logLevel.ERROR, "Failed to get account informations.")
+            self.Logger.ShowError(ex)
+            return
+        
+        try:
+            
+            while True:
+
+                print(f"\n"
+                    f" * Manage Password *\n\n"
+                    f"  Site   : {siteName}\n"
+                    f"  Account: {accountName}\n\n"
+                    f"1) Show password\n"
+                    f"2) Change password\n"
+                    f"D) Delete data\n"
+                    f"E) Exit\n\n")
+                res = input("Will you... > ").upper()
+                self.clearScreen()
+
+                if res == "1":
+
+                    # Show saved password
+
+                    self.logger(self.logLevel.INFO, "Showing saved password.")
+                    password = self.getPassWd(siteName, accountName)
+
+                    # Get max string length
+
+                    xLen = max([len(siteName), len(accountName), len(password)]) + 11
+
+                    print("\n"
+                            f" *{"".join("-" for _ in range(xLen))}*\n"
+                            f" * Site    : {siteName}\n"
+                            f" * Account : {accountName}\n"
+                            f" * PassWd  : {password}\n"
+                            f" *{"".join("-" for _ in range(xLen))}*")
+                    
+                    while True:
+
+                        res = input("\nCopy password to clipboard? (y/n) > ")
+                        self.clearScreen()
+                        resU = res.upper()
+
+                        if resU == "Y":
+
+                            try:
+
+                                # Copy password to clipboard
+
+                                pyperclip.copy(password)
+                                self.logger(self.logLevel.INFO, "Password copied to clipboard.")
+                                print("\nPassword copied to clipboard.\n")
+
+                            except Exception as ex:
+
+                                self.Logger.ShowError(ex)
+                                print("\nCopy password to clipboard failed.")
+
+                            break
+
+                        elif resU == "N":
+
+                            break
+
+                        else:
+
+                            print(f"\n{res} is not on the menu.")
+
+                    continue
+
+                elif res == "2":
+
+                    # Confirm and change
+
+                    while True:
+
+                        print("\nYou cannot access the old password after changing it.")
+                        res = input("\nWill you change the password? (y/n) > ")
+                        resU = res.upper()
+                        self.clearScreen()
+
+                        if resU == "Y":
+
+                            self.generateNewPassword(siteName, accountName, False)
+                            break
+
+                        elif resU == "N":
+
+                            break
+
+                        else:
+
+                            print(f"\n{res} is not on the menu.")
+
+                    continue
+
+                elif res == "D":
+
+                    # Confirm and delete
+
+                    while True:
+
+                        print("\nYou cannot recover data after it has been deleted.")
+                        res = input("\nAre you sure? (y/n) > ")
+                        resU = res.upper()
+                        self.clearScreen()
+
+                        if resU == "Y":
+
+                            # Delete account data
+
+                            try:
+                                    
+                                # Find account tag
+
+                                accountTag = Tools.readMapleTag(self.DATA_FILE, accountName, self.DATA_TAG, siteName)
+
+                                # Delete password and account data
+
+                                Tools.deleteTag(self.PASS_LIST, accountTag, "PW")
+                                Tools.deleteTag(self.PASS_LIST, accountTag, "SALTS")
+                                Tools.deleteTag(self.DATA_FILE, accountName, self.DATA_TAG, siteName)
+                                print("Account data deleted.")
+                                self.logger(self.logLevel.INFO, f"Account data has been deleted: [Site: {siteName} / Account: {accountName}]")
+                                
+                                self.saveData()
+
+                            except Exception as ex:
+
+                                self.logger(self.logLevel.ERROR, "Failed to delete account data.")
+                                self.Logger.ShowError(ex)
+                                break
+
+                            # Delete site data if all accounts have been deleted
+
+                            try:
+
+                                if len(Tools.getTags(self.DATA_FILE, self.DATA_TAG, siteName)) == 0:
+
+                                    Tools.deleteHeader(self.DATA_FILE, siteName, self.DATA_TAG)
+                                    print("Site data deleted.")
+                                    self.logger(self.logLevel.INFO, f"Site data has been deleted: {siteName}")
+
+                            except Exception as ex:
+
+                                self.Logger.ShowError(ex)
+
+                            return
+
+                        elif resU == "N":
+
+                            break
+
+                        else:
+
+                            print(f"\n{res} is not on the menu.")
+
+                    continue
+
+                elif res in self.EXIT_OPS:
+
+                    self.logger(self.logLevel.INFO, "Exit Manage Password Menu.")
+                    return
+                
+                else:
+
+                    print(f"\n{res} is not on the menu.\n")
+
+        except Exception as ex:
+
+            self.logger(self.logLevel.ERROR, "Failded to manage password.")
+            self.Logger.ShowError(ex)
 
     #
     ##########################

@@ -1,97 +1,8 @@
-from enum import IntEnum
-import datetime
-from os import getpid, path, remove
-import inspect
+from os import path, remove
 import os
 from shutil import move
 import subprocess
-import traceback
 
-logfile = path.join(os.getcwd(), "logs", f"log_{datetime.datetime.now():%Y%m%d}.log")
-
-#
-#####################
-# Set log level enum
-
-class LogLevel(IntEnum):
-
-    TRACE = 0
-    DEBUG = 1
-    INFO = 2
-    WARN = 3
-    ERROR = 4
-    FATAL = 5
-
-#
-#################################
-# Logger
-
-def logWriter(loglevel, message):
-
-    ''' - - - - - - -*
-    *                *
-    * Logging Object *
-    *                *
-    * - - - - - - -'''
-
-    f = open(logfile, "a")
-
-    # Get caller informations
-
-    callerFunc = inspect.stack()[1].function
-    callerLine = inspect.stack()[1].lineno
-
-    try:
-
-        # Export to console and log file
-
-        #print(f"[{loglevel.name:5}][Tools] {callerFunc}({callerLine}) {message}")
-        print(f"({getpid()}) {datetime.datetime.now():%Y-%m-%d %H:%M:%S} [{loglevel.name:5}][Tools]{callerFunc}({callerLine}) {message}", file=f)
-
-    except Exception as ex:
-
-        # If faled to export, print error info to console
-
-        print(f"[ERROR] {ex}")
-
-    finally:
-        f.close()
-        
-    # Check file size
-
-    try:
-
-        if path.getsize(logfile) > 3000000:
-
-            i = 0
-            logCopyFile = f"{logfile}{i}.log"
-
-            while path.isfile(logCopyFile):
-
-                i += 1
-                logCopyFile = f"{logfile}{i}.log"
-
-            os.rename(logfile, logCopyFile)
-
-    except Exception as ex:
-        print(f"[ERROR] {ex}")
-
-#
-##################
-# Show error
-
-def showError(ex):
-
-    ''' - - - - - - - - -*
-    *                    *
-    * Show and log error *
-    *                    *
-    * - - - - - - - - -'''
-
-    logWriter(LogLevel.ERROR, ex)
-    logWriter(LogLevel.ERROR, traceback.format_exc())
-
-#
 ##############################
 # Remove white space
 
@@ -134,10 +45,9 @@ def getTag(mapleLine: str) -> str:
     
     except Exception as ex:
 
-        logWriter(LogLevel.ERROR, f"Failed to get tag: {mapleLine}")
-        showError(ex)
+        print(ex)
+        raise
 
-    # logWriter(LogLevel.DEBUG, f"Tag: {"".join(tagStrList)}")
     return mapleLine[:ind]
 
 #
@@ -167,8 +77,8 @@ def getValue(mapleLine: str) -> str:
 
     except Exception as ex:
 
-        logWriter(LogLevel.ERROR, f"Failed to read value: {mapleLine}")
-        showError(ex)
+        print(ex)
+        raise
 
     # logWriter(LogLevel.DEBUG, f"Value: {"".join(valueStrList)}")
     return mapleLine[ind:strLen - 1]
@@ -306,10 +216,8 @@ def mapleFormatter(originalFile: str, saveFile: str = None) -> bool:
 
     except Exception as ex:
 
-        logWriter(LogLevel.ERROR, f"Failed to format file: {originalFile}")
-        showError(ex)
-
-        return False
+        print(ex)
+        raise
 
     finally:
         
@@ -336,16 +244,13 @@ def mapleFormatter(originalFile: str, saveFile: str = None) -> bool:
 
     except Exception as ex:
 
-        logWriter(LogLevel.ERROR, f"Failed to move file.\nFrom: {tmpFileName}\n  To: {saveFile}")
-        showError(ex)
-
-        return False
+        print(ex)
+        raise
 
     # If the format is wrong
 
     if ind > 0:
 
-        logWriter(LogLevel.WARN, "Invalid file format.")
         return False
 
     # If there are no error
@@ -371,7 +276,7 @@ def readMapleTag(fileName: str, tag: str, *headers: str) -> str:
 
     try:
         if not path.isfile(fileName):
-            logWriter(LogLevel.WARN, f"File does not exist: {fileName}")
+            
             return ""
 
         mapleFile = open(fileName, "r")
@@ -395,7 +300,7 @@ def readMapleTag(fileName: str, tag: str, *headers: str) -> str:
                 ind -= 1
 
             elif lineTag == "EOF" or fileLine == "":
-                logWriter(LogLevel.WARN, f"Could not find header [{headers[deepestInd]}] in [{", ".join(headers[:deepestInd])}]")
+                
                 return ""
 
         # Serch tag
@@ -410,14 +315,15 @@ def readMapleTag(fileName: str, tag: str, *headers: str) -> str:
                 break
 
             elif lineTag == "EOF" or lineTag == "E" or fileLine == "":
-                logWriter(LogLevel.WARN, f"Could not find tag: {tag} in headers: [{", ".join(headers)}]")
+                
                 break
 
         return retStr
 
     except Exception as ex:
-        logWriter(LogLevel.ERROR, f"Could not read file datas.\nAt line: {fileLine}")
-        showError(ex)
+
+        print(ex)
+        raise
     
     finally:
         if mapleFile != None:
@@ -442,7 +348,7 @@ def saveTagLine(saveFile: str, tag: str, valueStr: str, *headers: str) -> bool:
     try:
         
         if not path.isfile(saveFile):
-            logWriter(LogLevel.WARN, f"File does not exist: {saveFile}")
+            
             return False
 
         # Create copy file name
@@ -538,10 +444,8 @@ def saveTagLine(saveFile: str, tag: str, valueStr: str, *headers: str) -> bool:
 
     except Exception as ex:
 
-        logWriter(LogLevel.ERROR, "Failed to save data.")
-        showError(ex)
-
-        return False
+        print(ex)
+        raise
 
     finally:
 
@@ -580,7 +484,6 @@ def deleteTag(delFile: str, delTag: str, *headers: str) -> bool:
 
         if not path.isfile(delFile):
 
-            logWriter(LogLevel.WARN, f"File does not extist: {delFile}")
             return False
         
         # Create tmp file name
@@ -629,7 +532,6 @@ def deleteTag(delFile: str, delTag: str, *headers: str) -> bool:
 
             elif lineTag == "EOF":
 
-                logWriter(LogLevel.WARN, f"Header [{headers[deepestInd]}] does not exist in headers: [{", ".join(headers[:deepestInd])}]")
                 return False
         
         # Search tag
@@ -645,7 +547,6 @@ def deleteTag(delFile: str, delTag: str, *headers: str) -> bool:
 
             elif lineTag == "E" or lineTag == "EOF" or fileLine == "":
 
-                logWriter(LogLevel.WARN, f"Tag [{delTag}] does not extsts in headers: [{", ".join(headers)}]")
                 return False
             
             else:
@@ -672,9 +573,8 @@ def deleteTag(delFile: str, delTag: str, *headers: str) -> bool:
 
     except Exception as ex:
 
-        logWriter(LogLevel.ERROR, f"Failed to delete tag: {delTag}")
-        showError(ex)
-        return False
+        print(ex)
+        raise
 
     finally:
 
@@ -701,7 +601,6 @@ def deleteHeader(delFile: str, delHead: str, *Headers: str) -> bool:
 
         if not path.isfile(delFile):
 
-            logWriter(LogLevel.WARN, f"File does not exist: {delFile}")
             return False
 
         # Create tmp file name
@@ -748,7 +647,6 @@ def deleteHeader(delFile: str, delHead: str, *Headers: str) -> bool:
 
             elif lineTag == "EOF":
 
-                logWriter(LogLevel.WARN, f"Header [{Headers[deepestInd]}] does not exist in headers: [{", ".join(Headers[:deepestInd])}]")
                 return False
 
         # Serch delete header
@@ -781,7 +679,6 @@ def deleteHeader(delFile: str, delHead: str, *Headers: str) -> bool:
 
                 if lineTag == "EOF" or lineTag == "E":
 
-                    logWriter(LogLevel.WARN, f"Header [{delHead}] does not exist in header: [{", ".join(Headers)}]")
                     return False
 
             fileLine = mapleFile.readline()
@@ -806,9 +703,8 @@ def deleteHeader(delFile: str, delHead: str, *Headers: str) -> bool:
 
     except Exception as ex:
 
-        logWriter(LogLevel.ERROR, f"Failed to delete header: {delHead}")
-        showError(ex)
-        return False
+        print(ex)
+        raise
 
     finally:
 
@@ -879,7 +775,8 @@ def getHeaders(readFile: str, *headers: str) -> list[str]:
 
     except Exception as ex:
 
-        showError(ex)
+        print(ex)
+        raise
 
     finally:
 
@@ -950,7 +847,8 @@ def getTags(readFile: str, *headers: str) -> list[str]:
 
     except Exception as ex:
 
-        showError(ex)
+        print(ex)
+        raise
 
     finally:
 
@@ -978,7 +876,8 @@ def winHide(*fdPath):
 
     except Exception as ex:
 
-        showError(ex)
+        print(ex)
+        raise
 
 #
 ##############################
@@ -998,4 +897,5 @@ def winUnHide(*fdPath):
 
     except Exception as ex:
 
-        showError(ex)
+        print(ex)
+        raise
