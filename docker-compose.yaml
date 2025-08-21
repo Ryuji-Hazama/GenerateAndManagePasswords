@@ -1,8 +1,0 @@
-services:
-  genmanpw:
-    image: ryujihazama/genmanpw
-    stdin_open: true
-    tty: true
-    volumes:
-      - ~/Documents/GenManPw:/app/workDir
-
