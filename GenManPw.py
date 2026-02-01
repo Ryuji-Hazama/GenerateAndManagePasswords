@@ -72,7 +72,7 @@ class GenManPw:
 
                 # Create if it does not exist
 
-                self.logger.Info(f"Working directory does not exists: {cwd}")
+                self.logger.info(f"Working directory does not exists: {cwd}")
 
                 try:
 
@@ -81,7 +81,7 @@ class GenManPw:
 
                 except Exception as ex:
 
-                    self.logger.Warn("Failed to create working directory.")
+                    self.logger.warn("Failed to create working directory.")
                     self.logger.ShowError(ex)
                     self.CWD = os.getcwd()
 
@@ -89,7 +89,7 @@ class GenManPw:
 
                 self.CWD = cwd
 
-        self.logger.Debug(f"CWD is: {self.CWD}")
+        self.logger.debug(f"CWD is: {self.CWD}")
 
         self.DATA_FILE = path.join(self.CWD, workDir, "datas", "datas.mpl")
         self.PASS_LIST = path.join(self.CWD, workDir, "datas", "pwList.mpl")
@@ -142,7 +142,7 @@ EOF
 
         except Exception as ex:
 
-            self.logger.Warn("Could not clear the screen.")
+            self.logger.warn("Could not clear the screen.")
             self.logger.ShowError(ex)
 
     #
@@ -157,7 +157,7 @@ EOF
             key = base64.b64encode(hashlib.pbkdf2_hmac(self.HASH_TYPE, self.password, salt.encode(), self.ITERATIONS))
             self.dat.saveValue("KEY", salt, "SECURITY_INFO", save=True)
             self.pwfile.changeEncryptionKey(key, True)
-            self.logger.Info("Encryption key changed.")
+            self.logger.info("Encryption key changed.")
             return True
         
         except Exception as ex:
@@ -188,11 +188,11 @@ EOF
             f.close()
 
             self.dat.saveValue("KEY", salt, "SECURITY_INFO", save=True)
-            self.logger.Info("File encrypted.")
+            self.logger.info("File encrypted.")
 
         except Exception as ex:
 
-            self.logger.Warn("File encryption failed.")
+            self.logger.warn("File encryption failed.")
             self.logger.ShowError(ex)
             return False
 
@@ -208,11 +208,11 @@ EOF
             try:
 
                 os.remove(self.PASS_LIST)
-                self.logger.Info("Removed decoded file.")
+                self.logger.info("Removed decoded file.")
 
             except Exception as ex:
 
-                self.logger.Warn("Failed to remove decoded file.")
+                self.logger.warn("Failed to remove decoded file.")
                 self.logger.ShowError(ex)
 
         return True
@@ -241,7 +241,7 @@ EOF
 
             self.logger.ShowError(ex)
 
-        self.logger.Warn(f"Failed to get password string. Site: {siteName} / Account: {accountName}")
+        self.logger.warn(f"Failed to get password string. Site: {siteName} / Account: {accountName}")
         print("\nFailed to get password.")
         return ""
 
@@ -313,13 +313,13 @@ EOF
             self.dat.saveValue("PW", hashedPw, "SECURITY_INFO", save=True)
             self.dat.saveValue("SALT", passSalt, "SECURITY_INFO", save=True)
 
-            self.logger.Info("Hashed new password saved.")
+            self.logger.info("Hashed new password saved.")
             self.password = binPassWd
             self.changeKey()
 
             # Log
 
-            self.logger.Info("System login password updated.")
+            self.logger.info("System login password updated.")
             print("\nPassword updated!")
 
             return hashedPw
@@ -327,7 +327,7 @@ EOF
         except Exception as ex:
 
             self.logger.ShowError(ex)
-            self.logger.Error("Failed to change password.")
+            self.logger.error("Failed to change password.")
 
         return ""
 
@@ -395,25 +395,25 @@ EOF
             symList = f.readlines()
             f.close()
 
-            self.logger.Debug("Symbol list loaded")
+            self.logger.debug("Symbol list loaded")
 
             f = open(path.join(self.CWD, "NameList.txt"))
             nameList = f.readlines()
             f.close()
 
-            self.logger.Debug("Names list loaded")
+            self.logger.debug("Names list loaded")
 
             f = open(path.join(self.CWD, "WordList.txt"))
             wordList = f.readlines()
             f.close()
 
-            self.logger.Debug("Word list loaded")
+            self.logger.debug("Word list loaded")
 
             f = open(path.join(self.CWD, "VerbList.txt"))
             verbList = f.readlines()
             f.close()
 
-            self.logger.Debug("Verbs list loaded")
+            self.logger.debug("Verbs list loaded")
 
         except Exception as ex:
 
@@ -483,7 +483,7 @@ EOF
 
     def confPassword(self) -> str:
 
-        self.logger.Info("Auto generate password.")
+        self.logger.info("Auto generate password.")
 
         try:
 
@@ -513,7 +513,7 @@ EOF
 
                             pyperclip.copy(newPassword)
                             self.clearScreen()
-                            self.logger.Info("Password copied to clipboard.")
+                            self.logger.info("Password copied to clipboard.")
                             print("Password copied to clipboard.")
 
                         except Exception as ex:
@@ -534,7 +534,7 @@ EOF
 
         except Exception as ex:
 
-            self.logger.Error("Failed to generate password.")
+            self.logger.error("Failed to generate password.")
             self.logger.ShowError(ex)
 
         return ""
@@ -545,7 +545,7 @@ EOF
 
     def manualPassword(self) -> str:
 
-        self.logger.Info("Manually create password.")
+        self.logger.info("Manually create password.")
 
         while True:
 
@@ -584,7 +584,7 @@ EOF
                                 
                             pyperclip.copy(pwStr)
                             self.clearScreen()
-                            self.logger.Info("Password copied to clipboard.")
+                            self.logger.info("Password copied to clipboard.")
                             print("\nPassword copied to clipboard.")
 
                         except Exception as ex:
@@ -604,7 +604,7 @@ EOF
 
     def selectFromList(self, selectList: list[str], menuStr: str, i = 0) -> str:
 
-        self.logger.Info(f"{menuStr} Selection Menu")
+        self.logger.info(f"{menuStr} Selection Menu")
         listLen = len(selectList)
 
         while True:
@@ -612,7 +612,7 @@ EOF
             menuChoice = []
 
             print(f"\n\n * {menuStr} Selection Menu *")
-            self.logger.Info(f"Page {i + 1} / {listLen // 10 + 1}")
+            self.logger.info(f"Page {i + 1} / {listLen // 10 + 1}")
 
             if listLen > 10:
 
@@ -647,7 +647,7 @@ EOF
 
             if resU in self.EXIT_OPS:
 
-                self.logger.Info("Selected none.")
+                self.logger.info("Selected none.")
                 return ""
             
             elif resU in menuChoice:
@@ -662,7 +662,7 @@ EOF
 
                 else:
 
-                    self.logger.Info(f"[{selectList[int(res) + i * 10]}] selected.")
+                    self.logger.info(f"[{selectList[int(res) + i * 10]}] selected.")
                     return selectList[int(res) + i * 10]
                 
             elif resU.startswith("SEARCH "):
@@ -676,7 +676,7 @@ EOF
 
                 # Get search string
 
-                self.logger.Info(resU)
+                self.logger.info(resU)
                 searchStr = res[7:]
 
                 # Create list
@@ -694,7 +694,7 @@ EOF
                 if len(newSelectList) == 0:
 
                     print(f"Could not find \"{searchStr}\" in the list.")
-                    self.logger.Info("No match data.")
+                    self.logger.info("No match data.")
                     continue
 
                 print(f"\nFound {len(newSelectList)} items from {menuStr}.")
@@ -715,7 +715,7 @@ EOF
     def generateNewPassword(self, siteName: str, accountName: str, newData: bool = True) -> bool:
 
         newOrEdit = ("Edit", "Create new")
-        self.logger.Info(f"{newOrEdit[newData]} data.")
+        self.logger.info(f"{newOrEdit[newData]} data.")
 
         while True:
 
@@ -791,17 +791,17 @@ EOF
 
             # Log results
 
-            self.logger.Info(f"VV Create new data VV")
-            self.logger.Info(f"Site   : {siteName}")
-            self.logger.Info(f"Account: {accountName}")
-            self.logger.Info(f"PassWd : {newPassword[:4]}******{newPassword[10:]}")
-            self.logger.Info(f"^^ Create complete ^^")
+            self.logger.info(f"VV Create new data VV")
+            self.logger.info(f"Site   : {siteName}")
+            self.logger.info(f"Account: {accountName}")
+            self.logger.info(f"PassWd : {newPassword[:4]}******{newPassword[10:]}")
+            self.logger.info(f"^^ Create complete ^^")
 
             print(("\nPassword updated", "\nNew data created!")[newData])
 
         except Exception as ex:
 
-            self.logger.Error("Failed to generate new password.")
+            self.logger.error("Failed to generate new password.")
             self.logger.ShowError(ex)
 
     #
@@ -964,7 +964,7 @@ EOF
 
     def GeneratePasswordMain(self):
 
-        self.logger.Info("Generate Password menu loaded.")
+        self.logger.info("Generate Password menu loaded.")
         self.clearScreen()
 
         while True:
@@ -1034,7 +1034,7 @@ EOF
 
             if accountName != "":
 
-                self.logger.Info(f"Account selected [Site: {siteName} / Account: {accountName}]")
+                self.logger.info(f"Account selected [Site: {siteName} / Account: {accountName}]")
                 return siteName, accountName
             
     #
@@ -1045,7 +1045,7 @@ EOF
 
         try:
                 
-            self.logger.Info(f"Manage Password Menu")
+            self.logger.info(f"Manage Password Menu")
             siteName, accountName = self.selectAccount()
 
             if siteName == "":
@@ -1054,7 +1054,7 @@ EOF
             
         except Exception as ex:
 
-            self.logger.Error("Failed to get account informations.")
+            self.logger.error("Failed to get account informations.")
             self.logger.ShowError(ex)
             return
         
@@ -1077,7 +1077,7 @@ EOF
 
                     # Show saved password
 
-                    self.logger.Info("Showing saved password.")
+                    self.logger.info("Showing saved password.")
                     password = self.getPassWd(siteName, accountName)
 
                     # Get max string length
@@ -1104,7 +1104,7 @@ EOF
                                 # Copy password to clipboard
 
                                 pyperclip.copy(password)
-                                self.logger.Info("Password copied to clipboard.")
+                                self.logger.info("Password copied to clipboard.")
                                 print("\nPassword copied to clipboard.\n")
 
                             except Exception as ex:
@@ -1177,13 +1177,13 @@ EOF
                                 self.pwfile.deleteValue(accountTag, "SALTS", save=True)
                                 self.dat.deleteValue(accountName, self.DATA_TAG, siteName, save=True)
                                 print("Account data deleted.")
-                                self.logger.Info(f"Account data has been deleted: [Site: {siteName} / Account: {accountName}]")
+                                self.logger.info(f"Account data has been deleted: [Site: {siteName} / Account: {accountName}]")
                                 
                                 self.saveData()
 
                             except Exception as ex:
 
-                                self.logger.Error("Failed to delete account data.")
+                                self.logger.error("Failed to delete account data.")
                                 self.logger.ShowError(ex)
                                 break
 
@@ -1195,7 +1195,7 @@ EOF
 
                                     self.dat.removeHeader(siteName, self.DATA_TAG, save=True)
                                     print("Site data deleted.")
-                                    self.logger.Info(f"Site data has been deleted: {siteName}")
+                                    self.logger.info(f"Site data has been deleted: {siteName}")
 
                             except Exception as ex:
 
@@ -1215,7 +1215,7 @@ EOF
 
                 elif res in self.EXIT_OPS:
 
-                    self.logger.Info("Exit Manage Password Menu.")
+                    self.logger.info("Exit Manage Password Menu.")
                     return
                 
                 else:
@@ -1224,7 +1224,7 @@ EOF
 
         except Exception as ex:
 
-            self.logger.Error("Failded to manage password.")
+            self.logger.error("Failded to manage password.")
             self.logger.ShowError(ex)
 
     #
@@ -1233,7 +1233,7 @@ EOF
 
     def settingsMenu(self) -> bool:
 
-        self.logger.Info("Settings menu loaded.")
+        self.logger.info("Settings menu loaded.")
 
         while True:
 
@@ -1249,12 +1249,12 @@ EOF
 
             if resU in self.EXIT_OPS:
 
-                self.logger.Info("Exit settings menu.")
+                self.logger.info("Exit settings menu.")
                 return False
             
             elif resU == "1":
 
-                self.logger.Info("Changing login password.")
+                self.logger.info("Changing login password.")
 
                 try:
 
@@ -1274,18 +1274,18 @@ EOF
                         if isMatch:
 
                             self.password = binPassWd
-                            self.logger.Info("Authenticated.")
+                            self.logger.info("Authenticated.")
                             break
 
                         print("\n* Password incorrect.\n"
                             "* Please try again.")
-                        self.logger.Info(f"Authentication failed {i + 1}")
+                        self.logger.info(f"Authentication failed {i + 1}")
 
                     if not isMatch:
 
                         print("\n\n* Authentication failed *\n\n"
                               "And you are kicked out.")
-                        self.logger.Info("Failed to authenticate to change login password")
+                        self.logger.info("Failed to authenticate to change login password")
                         return True
                     
                     self.clearScreen()
@@ -1310,14 +1310,14 @@ EOF
 
             try:
 
-                self.logger.Info("START")
+                self.logger.info("START")
                 password = self.dat.readMapleTag("PW", "SECURITY_INFO")
 
                 # If the first time to use
 
                 if password == "":
 
-                    self.logger.Info("First time to login.")
+                    self.logger.info("First time to login.")
 
                     password = self.changeSysPasswd()
 
@@ -1340,13 +1340,13 @@ EOF
 
                     if isMatch:
 
-                        self.logger.Info("Password match.")
+                        self.logger.info("Password match.")
                         self.password = binPassWd
                         break
 
                     print("\n* Password incorrect.\n"
                         "* Please try again.")
-                    self.logger.Info(f"Login failed {i + 1}")
+                    self.logger.info(f"Login failed {i + 1}")
 
                 if not isMatch:
 
@@ -1377,7 +1377,7 @@ EOF
                     self.logger.ShowError(mex)
                     return -97
 
-                self.logger.Info("System login.")
+                self.logger.info("System login.")
                 print("Password correct!")
                 
             except Exception as ex:
@@ -1394,27 +1394,25 @@ EOF
 
 *--------------------------------------------------------------------*
 
-  ::::::::::::::n,
-  "::::M^^^^^\\::::M
-   ::::M      :::::M
-   ::::M      ;::;M
-   :::::..,,;::;M"   ........_     ......_     ......_
-   ::::M^^^^^^"     ::v^^^^:::A   ::v^^\\::A   ::v^^\\::A
-   ::::M            "^.... :::M   ':...,`^^   ':...,`^^
-   ::::M           :::W^^^':::M    `"\""`;::\\   `"\""`;::\\
-   ::::M           '::.....:::.A  ::.....;:;N ::.....;:;N
-   "^^^^            `^^^^^^^^^^   `^^^^^^^^   `^^^^^^^^
+  PPPPPPP                                                      D
+  P      P                                                     D
+  P      P                                                     D
+  PPPPPPP   AAAAAA    SSSSS    SSSSS           W      W        D
+  P               A  S        S                W      W  DDDDDDD
+  P         AAAAAAA   SSSSS    SSSSS           W  WW  W D      D
+  P        A      A        S        S          W  WW  W D      D
+  P         AAAAAAA SSSSSSS  SSSSSSS  ########  WW  WW   DDDDDDD
 
-   ::::q          ::::n
-   :::::.,      .:::::M
-   :::::::.,  .:::::::M
-   :::::::::.:::'W::::M
-   ::::M;:::::'W" ::::M     ........_   .........._     ........_
-   ::::M "'::W"   ::::M    ::v^^^^:::A  ":::v^^^:::A   ::v^^^^:::A
-   ::::M    '"    ::::M    "^.... :::M   :::M   :::M   "^.... :::M
-   ::::M          ::::M   :::W^^^':::M   :::M   :::M  :::W^^^':::M
-  ::::::A        ::::::A  '::.....:::.A  :::M   ::::A '::.....:::.A
-  "^^^^^^        "^^^^^^   `^^^^^^^^^^   "^^^   "^^^^  `^^^^^^^^^^
+  M      M
+  MM    MM
+  M M  M M
+  M  MM  M  AAAAAA  N NNNNN   AAAAAA   GGGGGGG  EEEEEE  R RRRRR
+  M      M        A NN     N        A G      G E      E RR     R
+  M      M  AAAAAAA N      N  AAAAAAA G      G EEEEEEEE R
+  M      M A      A N      N A      A  GGGGGGG E        R
+  M      M  AAAAAAA N      N  AAAAAAA        G  EEEEEEE R
+                                             G
+                                       GGGGGG
 
 *--------------------------------------------------------------------*
 
@@ -1422,7 +1420,7 @@ EOF
                 
                 while True:
 
-                    self.logger.Info("Main menu loaded.")
+                    self.logger.info("Main menu loaded.")
 
                     print("\n\n"
                         " * Main Menu *\n\n"
@@ -1449,7 +1447,7 @@ EOF
 
                     elif select in self.EXIT_OPS:
 
-                        self.logger.Info("System logout.")
+                        self.logger.info("System logout.")
                         return 0
 
                     else:
@@ -1469,7 +1467,7 @@ EOF
 
         finally:
 
-            self.logger.Info("END\n- - - - - - - - - - - - - - - -")
+            self.logger.info("END\n- - - - - - - - - - - - - - - -")
             print(f"\n\n {random.choice(["See ya!", "Bye!", "Adios!", "Hasta luego!", "Пока!", "Sayonara!"])}\n")
 
 #############################

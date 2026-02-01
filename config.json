@@ -1,0 +1,9 @@
+{
+    "MapleLogger": {
+        "ConsoleLogLevel": "ERROR",
+        "FileLogLevel": "INFO",
+        "MaxLogSize": 3,
+        "WorkingDirectory": "logs",
+        "FileEncoding": "utf-8"
+    }
+}
