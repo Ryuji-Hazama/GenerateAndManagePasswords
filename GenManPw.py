@@ -11,40 +11,69 @@ import random
 import shutil
 import sys
 
+from src.consts import *
+
 class GenManPw:
 
-    def __init__(self, iterations):
+    def __init__(self, iterations: int | None = None):
 
         cwd = os.getcwd()
-        workDir = "workDir"
-        configFile = "config.mpl"
 
         # Check configuration directory
 
-        if not path.isdir(path.join(cwd, workDir)):
+        if not path.isdir(path.join(cwd, WORKING_DIRECTORY)):
 
-            os.mkdir(path.join(cwd, workDir))
+            os.mkdir(path.join(cwd, WORKING_DIRECTORY))
 
         # Check configuration file
 
-        if not path.isfile(path.join(cwd, workDir, configFile)) and path.isfile(path.join(cwd, configFile)):
+        if not path.isfile(path.join(cwd, WORKING_DIRECTORY, CONFIG_FILE)) and path.isfile(path.join(cwd, CONFIG_FILE)):
 
-            shutil.copy(path.join(cwd, configFile), path.join(cwd, workDir, configFile))
+            shutil.copy(path.join(cwd, CONFIG_FILE), path.join(cwd, WORKING_DIRECTORY, CONFIG_FILE))
 
         # Set const
 
         self.EXIT_OPS = {"Q", "E", "C", "QUIT", "EXIT", "CANCEL"}
         self.CHOICE = [True, False]
-        self.DATA_TAG = "DATAS"
+        self.DATA_TAG = "Datas"
         self.HASH_TYPE = "sha256"
-        self.ITERATIONS = iterations
 
-        self.logger = maplex.Logger("GenManPw", os.path.join(cwd, workDir, "logs"))
+        self.logger = maplex.Logger("GenManPw", os.path.join(cwd, WORKING_DIRECTORY, "logs"), configFile=os.path.join(cwd, WORKING_DIRECTORY, CONFIG_FILE))
         self.password = "".encode()
 
         # Load configuration
 
-        self.conf = maplex.MapleTree(path.join(os.getcwd(), workDir, configFile))
+        self.conf = maplex.MapleJson(path.join(cwd, WORKING_DIRECTORY, CONFIG_FILE))
+        self.confJson = self.conf.read()
+        self.appSettings = self.confJson.get("ApplicationSettings", None)
+
+        if self.appSettings is None:
+
+            self.logger.warn("Application settings not found in configuration file.")
+            self.appSettings = {}
+            self.confJson["ApplicationSettings"] = self.appSettings
+            self.conf.write(self.confJson)
+
+        # Set iterations
+
+        if iterations is not None:
+
+            self.ITERATIONS = iterations
+
+        else:
+
+            iterConf = self.appSettings.get("Iterations", None)
+
+            if iterConf is None:
+
+                self.ITERATIONS = 100000
+                self.appSettings["Iterations"] = self.ITERATIONS
+                self.confJson["ApplicationSettings"] = self.appSettings
+                self.conf.write(self.confJson)
+
+            else:
+
+                self.ITERATIONS = iterConf
 
         # Check the OS for clear screen
 
@@ -58,7 +87,7 @@ class GenManPw:
 
         # Get current working directory from configuration file
 
-        cwd = self.conf.readMapleTag("CWD", "Application settings")
+        cwd = self.appSettings.get("WorkingDirectory", "")
 
         if cwd == "":
 
@@ -89,22 +118,23 @@ class GenManPw:
 
                 self.CWD = cwd
 
-        self.logger.debug(f"CWD is: {self.CWD}")
+        self.logger.debug(f"Working directory is: {self.CWD}")
 
-        self.DATA_FILE = path.join(self.CWD, workDir, "datas", "datas.mpl")
-        self.PASS_LIST = path.join(self.CWD, workDir, "datas", "pwList.mpl")
+        self.DATA_FILE = path.join(self.CWD, WORKING_DIRECTORY, "datas", "datas.json")
+        self.PASS_LIST = path.join(self.CWD, WORKING_DIRECTORY, "datas", "pwList.json")
+        self.dataFileInstance = maplex.MapleJson(self.DATA_FILE)
 
-        # Check data directoy
+        # Check data directory
 
-        if not path.isdir(path.join(self.CWD, workDir, "datas")):
+        if not path.isdir(path.join(self.CWD, WORKING_DIRECTORY, "datas")):
 
-            os.makedirs(path.join(self.CWD, workDir, "datas"))
+            os.makedirs(path.join(self.CWD, WORKING_DIRECTORY, "datas"))
 
         # Check temp directory
 
-        if not path.isdir(path.join(self.CWD, "temp")):
+        if not path.isdir(path.join(self.CWD, WORKING_DIRECTORY, "temp")):
 
-            os.mkdir(path.join(self.CWD, "temp"))
+            os.mkdir(path.join(self.CWD, WORKING_DIRECTORY, "temp"))
 
         # Check data files
 
@@ -112,15 +142,8 @@ class GenManPw:
 
             try:
 
-                with open(self.DATA_FILE, "w") as f:
-                        
-                    f.write(
-"""
-MAPLE
-H DATAS
-E
-EOF
-"""                 )
+                self.dat = {"Datas": [], "SecurityInfo": {}}
+                self.dataFileInstance.write(self.dat)
 
             except Exception as ex:
 
@@ -128,7 +151,7 @@ EOF
 
         # Load data file
 
-        self.dat = maplex.MapleTree(self.DATA_FILE)
+        self.dat = self.dataFileInstance.read()
 
     #
     ####################################
@@ -147,7 +170,7 @@ EOF
 
     #
     ####################################
-    # Change key
+    # Change key (maybe not need this function but just in case)
 
     def changeKey(self) -> bool:
 
@@ -167,7 +190,7 @@ EOF
 
     #
     ####################################
-    # Encode file
+    # Encode file (replace this with maples.MapleJson().encrypt() later)
 
     def encodeFile(self, deleteDecodedFile: bool = False) -> bool:
 
@@ -300,6 +323,8 @@ EOF
             hashedPw = hashlib.pbkdf2_hmac(self.HASH_TYPE, binPassWd, salt, self.ITERATIONS).hex()
 
             # Re-hash saved passwords
+
+            for siteData in self.dat.get("Datas", []):
 
             for siteName in self.dat.getHeaders(self.DATA_TAG):
                 for accountName in self.dat.getTags(self.DATA_TAG, siteName):
@@ -1311,7 +1336,7 @@ EOF
             try:
 
                 self.logger.info("START")
-                password = self.dat.readMapleTag("PW", "SECURITY_INFO")
+                password = self.dat.get("SecurityInfo", {}).get("Password", "")
 
                 # If the first time to use
 

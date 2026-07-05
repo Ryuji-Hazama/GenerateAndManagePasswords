@@ -1,4 +1,8 @@
 {
+    "ApplicationSettings": {
+        "WorkingDirectory": "",
+        "Iterations": 100000
+    },
     "MapleLogger": {
         "ConsoleLogLevel": "ERROR",
         "FileLogLevel": "INFO",
