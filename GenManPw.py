@@ -11,7 +11,7 @@ import random
 import shutil
 import sys
 
-from src.consts import *
+from .src.consts import *
 
 class GenManPw:
 
@@ -35,7 +35,7 @@ class GenManPw:
 
         self.EXIT_OPS = {"Q", "E", "C", "QUIT", "EXIT", "CANCEL"}
         self.CHOICE = [True, False]
-        self.DATA_TAG = "Datas"
+        self.DATA_TAG = KEY_DATAS
         self.HASH_TYPE = "sha256"
 
         self.logger = maplex.Logger("GenManPw", os.path.join(cwd, WORKING_DIRECTORY, "logs"), configFile=os.path.join(cwd, WORKING_DIRECTORY, CONFIG_FILE))
@@ -45,13 +45,13 @@ class GenManPw:
 
         self.conf = maplex.MapleJson(path.join(cwd, WORKING_DIRECTORY, CONFIG_FILE))
         self.confJson = self.conf.read()
-        self.appSettings = self.confJson.get("ApplicationSettings", None)
+        self.appSettings = self.confJson.get(KEY_APPLICATION_SETTINGS, None)
 
         if self.appSettings is None:
 
             self.logger.warn("Application settings not found in configuration file.")
             self.appSettings = {}
-            self.confJson["ApplicationSettings"] = self.appSettings
+            self.confJson[KEY_APPLICATION_SETTINGS] = self.appSettings
             self.conf.write(self.confJson)
 
         # Set iterations
@@ -68,7 +68,7 @@ class GenManPw:
 
                 self.ITERATIONS = 100000
                 self.appSettings["Iterations"] = self.ITERATIONS
-                self.confJson["ApplicationSettings"] = self.appSettings
+                self.confJson[KEY_APPLICATION_SETTINGS] = self.appSettings
                 self.conf.write(self.confJson)
 
             else:
@@ -120,15 +120,15 @@ class GenManPw:
 
         self.logger.debug(f"Working directory is: {self.CWD}")
 
-        self.DATA_FILE = path.join(self.CWD, WORKING_DIRECTORY, "datas", "datas.json")
-        self.PASS_LIST = path.join(self.CWD, WORKING_DIRECTORY, "datas", "pwList.json")
+        self.DATA_FILE = path.join(self.CWD, WORKING_DIRECTORY, KEY_DATAS, "datas.json")
+        self.PASS_LIST = path.join(self.CWD, WORKING_DIRECTORY, KEY_DATAS, "pwList.json")
         self.dataFileInstance = maplex.MapleJson(self.DATA_FILE)
 
         # Check data directory
 
-        if not path.isdir(path.join(self.CWD, WORKING_DIRECTORY, "datas")):
+        if not path.isdir(path.join(self.CWD, WORKING_DIRECTORY, KEY_DATAS)):
 
-            os.makedirs(path.join(self.CWD, WORKING_DIRECTORY, "datas"))
+            os.makedirs(path.join(self.CWD, WORKING_DIRECTORY, KEY_DATAS))
 
         # Check temp directory
 
@@ -142,7 +142,7 @@ class GenManPw:
 
             try:
 
-                self.dat = {"Datas": [], "SecurityInfo": {}}
+                self.dat = {KEY_DATAS: [], KEY_SECURITY_INFO: {}}
                 self.dataFileInstance.write(self.dat)
 
             except Exception as ex:
@@ -324,10 +324,12 @@ class GenManPw:
 
             # Re-hash saved passwords
 
-            for siteData in self.dat.get("Datas", []):
+            for siteData in self.dat.get(KEY_DATAS, []):
 
-            for siteName in self.dat.getHeaders(self.DATA_TAG):
-                for accountName in self.dat.getTags(self.DATA_TAG, siteName):
+                siteName = siteData.get("Site", "")
+                accountList = siteData.get("Accounts", [])
+
+                for accountName in accountList:
 
                     savedPass = self.getPassWd(siteName, accountName)
                     self.encodePassword(savedPass, self.dat.readMapleTag(accountName, self.DATA_TAG, siteName),
@@ -335,8 +337,12 @@ class GenManPw:
 
             # Save new password
 
-            self.dat.saveValue("PW", hashedPw, "SECURITY_INFO", save=True)
-            self.dat.saveValue("SALT", passSalt, "SECURITY_INFO", save=True)
+            securityInfo = self.dat.get(KEY_SECURITY_INFO, {})
+            securityInfo[KEY_PASSWORD] = hashedPw
+            securityInfo[KEY_SALT] = passSalt
+
+            self.dat[KEY_SECURITY_INFO] = securityInfo
+            self.dataFileInstance.write(self.dat)
 
             self.logger.info("Hashed new password saved.")
             self.password = binPassWd
@@ -348,6 +354,10 @@ class GenManPw:
             print("\nPassword updated!")
 
             return hashedPw
+        
+        ####################################################
+        # Unchanged from here
+        ####################################################
         
         except Exception as ex:
 
@@ -1336,7 +1346,7 @@ class GenManPw:
             try:
 
                 self.logger.info("START")
-                password = self.dat.get("SecurityInfo", {}).get("Password", "")
+                password = self.dat.get(KEY_SECURITY_INFO, {}).get("Password", "")
 
                 # If the first time to use
 
