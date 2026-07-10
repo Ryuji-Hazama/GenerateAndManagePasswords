@@ -283,8 +283,18 @@ class GenManPw:
     
         # Save
 
-        self.pwfile.saveValue(pwTag, token, "PW")
-        self.pwfile.saveValue(pwTag, passSalt, "SALTS", save=True)
+        passDict = self.pwfile.read()
+        passwordList = passDict.get(KEY_PASSWORD_LIST, {})
+        saltList = passDict.get(KEY_SALT_LIST, {})
+
+        passwordList[pwTag] = token
+        saltList[pwTag] = passSalt
+
+        # Update in-memory lists
+        passDict[KEY_PASSWORD_LIST] = passwordList
+        passDict[KEY_SALT_LIST] = saltList
+
+        self.pwfile.write(passDict)
 
     #
     ####################################
@@ -354,10 +364,6 @@ class GenManPw:
             print("\nPassword updated!")
 
             return hashedPw
-        
-        ####################################################
-        # Unchanged from here
-        ####################################################
         
         except Exception as ex:
 
@@ -797,7 +803,8 @@ class GenManPw:
 
                 try:
 
-                    tagList = self.pwfile.getTags("PW")
+                    passwordList = self.pwfile.readOrDefault(KEY_PASSWORD_LIST, {})
+                    tagList = list(passwordList.keys())
                     i = 0
                     pwTag = f"PW{i}"
 
@@ -812,7 +819,21 @@ class GenManPw:
 
                 # Save tag
 
-                self.dat.saveValue(accountName, pwTag, self.DATA_TAG, siteName, save=True)
+                datDicts = self.dat.get(KEY_DATAS, [])
+                siteData = next((item for item in datDicts if item.get(KEY_SITE_NAME) == siteName), {})
+                siteData[KEY_ACCOUNT_NAME] = accountName
+                siteData[KEY_PASSWORD_KEY] = pwTag
+                
+                if siteData not in datDicts:
+
+                    datDicts.append(siteData)
+
+                else:
+
+                    self.logger.warn(f"Site data already exists: {siteName}")
+
+                self.dat[KEY_DATAS] = datDicts
+                self.dataFileInstance.write(self.dat)
 
             else:
 
@@ -1404,7 +1425,7 @@ class GenManPw:
 
                     fileHashSalt = self.dat.readMapleTag("KEY", "SECURITY_INFO").encode()
                     key = base64.b64encode(hashlib.pbkdf2_hmac(self.HASH_TYPE, self.password, fileHashSalt, self.ITERATIONS))
-                    self.pwfile = maplex.MapleTree(self.PASS_LIST, encrypt=True, key=key, createBaseFile=newFile)
+                    self.pwfile = maplex.MapleJson(PASS_LIST, encrypt=True, key=key)
 
                 except maplex.MapleException as mex:
 
