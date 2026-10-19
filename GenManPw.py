@@ -834,7 +834,8 @@ class GenManPw:
 
                 except Exception as ex:
 
-                    self.logger.ShowError(ex)
+                    self.logger.error("Failed to create new tag.", ex)
+                    return False
 
                 # Save tag
 
@@ -875,8 +876,8 @@ class GenManPw:
 
         except Exception as ex:
 
-            self.logger.error("Failed to generate new password.")
-            self.logger.ShowError(ex)
+            self.logger.error("Failed to generate new password.", ex)
+            return False
 
     #
     ####################################################
@@ -1437,7 +1438,7 @@ class GenManPw:
 
                     fileHashSalt = self.dat.get(KEY_SECURITY_INFO, {}).get(KEY_KEY, "").encode()
                     key = base64.b64encode(hashlib.pbkdf2_hmac(self.HASH_TYPE, self.password, fileHashSalt, self.ITERATIONS))
-                    self.pwfile = maplex.MapleJson(PASS_LIST, encrypt=True, key=key)
+                    self.pwfile = maplex.MapleJson(self.PASS_LIST, encrypt=True, key=key)
 
                 except maplex.MapleException as mex:
 
