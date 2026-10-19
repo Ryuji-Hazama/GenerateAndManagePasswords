@@ -184,7 +184,9 @@ class GenManPw:
             securityInfo[KEY_KEY] = salt
             self.dat[KEY_SECURITY_INFO] = securityInfo
             self.dataFileInstance.write(self.dat)
-            self.pwfile.setKey(key)
+            currentPasswords = self.pwfile.read()
+            self.pwfile.setEncryption(True, key)
+            self.pwfile.write(currentPasswords)
             self.logger.info("Encryption key changed.")
             return True
         
@@ -1416,6 +1418,11 @@ class GenManPw:
                 try:
 
                     # Load password file
+
+                    if not path.exists(self.PASS_LIST):
+
+                        # Create a new empty password file
+                        self.pwfile = maplex.MapleJson(PASS_LIST)
 
                     fileHashSalt = self.dat.get(KEY_SECURITY_INFO, {}).get(KEY_KEY, "").encode()
                     key = base64.b64encode(hashlib.pbkdf2_hmac(self.HASH_TYPE, self.password, fileHashSalt, self.ITERATIONS))
