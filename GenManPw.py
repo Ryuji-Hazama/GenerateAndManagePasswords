@@ -1382,7 +1382,8 @@ class GenManPw:
                     self.logger.info("First time to login.")
 
                     # Create a new empty password file
-                    self.pwfile = maplex.MapleJson(self.PASS_LIST).write({})
+                    self.pwfile = maplex.MapleJson(self.PASS_LIST)
+                    self.pwfile.write({})
 
                     password = self.changeSysPasswd()
 
