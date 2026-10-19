@@ -152,6 +152,7 @@ class GenManPw:
         # Load data file
 
         self.dat = self.dataFileInstance.read()
+        self.pwfile = None  # Initialize the password file instance as None
 
     #
     ####################################
