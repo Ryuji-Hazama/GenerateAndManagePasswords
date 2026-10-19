@@ -1382,6 +1382,11 @@ class GenManPw:
 
                     self.logger.info("First time to login.")
 
+                    if not path.exists(self.PASS_LIST):
+
+                        # Create a new empty password file
+                        self.pwfile = maplex.MapleJson(self.PASS_LIST)
+
                     password = self.changeSysPasswd()
 
                     if password == "":
@@ -1419,11 +1424,6 @@ class GenManPw:
                 try:
 
                     # Load password file
-
-                    if not path.exists(self.PASS_LIST):
-
-                        # Create a new empty password file
-                        self.pwfile = maplex.MapleJson(PASS_LIST)
 
                     fileHashSalt = self.dat.get(KEY_SECURITY_INFO, {}).get(KEY_KEY, "").encode()
                     key = base64.b64encode(hashlib.pbkdf2_hmac(self.HASH_TYPE, self.password, fileHashSalt, self.ITERATIONS))
