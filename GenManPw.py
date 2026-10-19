@@ -1385,7 +1385,7 @@ class GenManPw:
                     if not path.exists(self.PASS_LIST):
 
                         # Create a new empty password file
-                        self.pwfile = maplex.MapleJson(self.PASS_LIST)
+                        self.pwfile = maplex.MapleJson(self.PASS_LIST).write({})
 
                     password = self.changeSysPasswd()
 
