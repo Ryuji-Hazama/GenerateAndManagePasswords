@@ -259,6 +259,34 @@ class GenManPw:
                 self.logger.ShowError(ex)
 
         return True
+
+    #
+    ##########################
+    # Get site data by site name
+
+    def getSiteData(self, siteName: str):
+
+        siteList = self.dat.get(KEY_DATAS, [])
+        return next((item for item in siteList if item.get(KEY_SITE_NAME) == siteName), {})
+
+    #
+    ##########################
+    # Get account data by site name and account name
+
+    def getAccountData(self, siteName: str, accountName: str):
+
+        siteData = self.getSiteData(siteName)
+        accountList = siteData.get(KEY_ACCOUNTS, [])
+        return next((item for item in accountList if item.get(KEY_ACCOUNT_NAME) == accountName), {})
+
+    #
+    ##########################
+    # Get password tag by site name and account name
+
+    def getPasswordTag(self, siteName: str, accountName: str):
+
+        accountData = self.getAccountData(siteName, accountName)
+        return accountData.get(KEY_PASSWORD_KEY, "")
     
     #
     ##########################
@@ -270,12 +298,13 @@ class GenManPw:
 
             # Get account tag
 
-            accountTag = self.dat.readMapleTag(accountName, self.DATA_TAG, siteName)
+            accountTag = self.getPasswordTag(siteName, accountName)
 
             # Decrypt password
 
-            passWdToken = self.pwfile.readMapleTag(accountTag, "PW").encode()
-            salt = self.pwfile.readMapleTag(accountTag, "SALTS") + siteName + accountName
+            psswordFileContent = self.pwfile.read()
+            passWdToken = psswordFileContent.get(KEY_PASSWORD_LIST, {}).get(accountTag, "").encode()
+            salt = psswordFileContent.get(KEY_SALT_LIST, {}).get(accountTag, "") + siteName + accountName
 
             key = base64.b64encode(hashlib.pbkdf2_hmac(self.HASH_TYPE, self.password, salt.encode(), self.ITERATIONS))
             return Fernet(key).decrypt(passWdToken).decode()
@@ -840,25 +869,30 @@ class GenManPw:
                 # Save tag
 
                 datDicts = self.dat.get(KEY_DATAS, [])
-                siteData = next((item for item in datDicts if item.get(KEY_SITE_NAME) == siteName), {})
+                siteData = self.getSiteData(siteName)
                 accountData = {KEY_ACCOUNT_NAME: accountName, KEY_PASSWORD_KEY: pwTag}
 
                 accountList = siteData.get(KEY_ACCOUNTS, [])
                 accountList.append(accountData)
                 siteData[KEY_ACCOUNTS] = accountList
 
+                if siteData.get(KEY_SITE_NAME) is None:
+                    siteData[KEY_SITE_NAME] = siteName
+
                 datDicts.append(siteData)
-                self.dat[KEY_DATAS] = datDicts
-                self.dataFileInstance.write(self.dat)
+                self.dataFileInstance.write(datDicts, KEY_DATAS)
+                self.dat = self.dataFileInstance.read()
 
             else:
 
                 # Get pw tag
 
-                datList = self.dat.get(KEY_DATAS, [])
-                siteData = next((item for item in datList if item.get(KEY_SITE_NAME) == siteName), {})
-                accountList = siteData.get(KEY_ACCOUNTS, [])
-                pwTag = next((item.get(KEY_PASSWORD_KEY) for item in accountList if item.get(KEY_ACCOUNT_NAME) == accountName), "")
+                accountData = self.getAccountData(siteName, accountName)
+                pwTag = accountData.get(KEY_PASSWORD_KEY, "")
+
+                if pwTag == "":
+                    print(f"No password tag found for account {accountName} at site {siteName}.")
+                    return False
 
             # Encode and save
 
@@ -901,7 +935,8 @@ class GenManPw:
             
             try:
 
-                accountList = next((site.get(KEY_ACCOUNTS, []) for site in self.dat.get(KEY_DATAS, []) if site.get(KEY_SITE_NAME, None) == siteName), [])
+                siteData = self.getSiteData(siteName)
+                accountList = siteData.get(KEY_ACCOUNTS, [])
 
             except mpex.MapleDataNotFoundException:
 
@@ -964,7 +999,7 @@ class GenManPw:
     def selectAccountName(self, siteName: str, pageInd = 0) -> str:
 
         self.clearScreen()
-        accList = list(item.get(KEY_ACCOUNT_NAME, "") for item in next((site.get(KEY_ACCOUNTS, []) for site in self.dat.get(KEY_DATAS, []) if site.get(KEY_SITE_NAME, None) == siteName), []))
+        accList = list(item.get(KEY_ACCOUNT_NAME, "") for item in self.getSiteData(siteName).get(KEY_ACCOUNTS, []))
         accList.sort()
 
         if len(accList) == 0:
@@ -1244,37 +1279,50 @@ class GenManPw:
                                     
                                 # Find account tag
 
-                                accountTag = self.dat.readMapleTag(accountName, self.DATA_TAG, siteName)
+                                accountTag = self.getPasswordTag(siteName, accountName)
 
                                 # Delete password and account data
 
-                                self.pwfile.deleteValue(accountTag, "PW")
-                                self.pwfile.deleteValue(accountTag, "SALTS", save=True)
-                                self.dat.deleteValue(accountName, self.DATA_TAG, siteName, save=True)
+                                passwordFileContent = self.pwfile.read()
+                                passwordList = passwordFileContent.get(KEY_PASSWORD_LIST, [])
+                                saltList = passwordFileContent.get(KEY_SALT_LIST, [])
+                                del passwordList[accountTag]
+                                del saltList[accountTag]
+                                passwordFileContent[KEY_PASSWORD_LIST] = passwordList
+                                passwordFileContent[KEY_SALT_LIST] = saltList
+                                self.pwfile.write(passwordFileContent)
+
+                                siteData = self.getSiteData(siteName)
+                                accountData = self.getAccountData(siteName, accountName)
+                                accountList = siteData.get(KEY_ACCOUNTS, [])
+                                accountList.remove(accountData)
+                                siteData[KEY_ACCOUNTS] = accountList
+                                sitesList = self.dat.get(KEY_DATAS, [])
+
+                                # Remove site data if no accounts remain
+
+                                if len(accountList) == 0:
+
+                                    sitesList = [site for site in sitesList if site.get(KEY_SITE_NAME) != siteName]
+
+                                else:
+
+                                    for site in sitesList:
+
+                                        if site.get(KEY_SITE_NAME) == siteName:
+                                            site[KEY_ACCOUNTS] = accountList
+                                            break
+
+                                self.dataFileInstance.write(sitesList, KEY_DATAS)
+                                self.dat = self.dataFileInstance.read()
                                 print("Account data deleted.")
                                 self.logger.info(f"Account data has been deleted: [Site: {siteName} / Account: {accountName}]")
-                                
-                                self.saveData()
 
                             except Exception as ex:
 
                                 self.logger.error("Failed to delete account data.")
                                 self.logger.ShowError(ex)
                                 break
-
-                            # Delete site data if all accounts have been deleted
-
-                            try:
-
-                                if len(self.dat.getTags(self.DATA_TAG, siteName)) == 0:
-
-                                    self.dat.removeHeader(siteName, self.DATA_TAG, save=True)
-                                    print("Site data deleted.")
-                                    self.logger.info(f"Site data has been deleted: {siteName}")
-
-                            except Exception as ex:
-
-                                self.logger.ShowError(ex)
 
                             return
 
