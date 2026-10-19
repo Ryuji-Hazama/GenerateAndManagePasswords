@@ -1,1 +1,6 @@
 workDir/
+
+# UV environment files
+*.uv
+uv.lock
+.venv/

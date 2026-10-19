@@ -11,7 +11,7 @@ import random
 import shutil
 import sys
 
-from .src.consts import *
+from src.consts import *
 
 class GenManPw:
 
@@ -147,7 +147,7 @@ class GenManPw:
 
             except Exception as ex:
 
-                self.logger.ShowError(ex)
+                self.logger.error("Failed to initialize data file.", ex)
 
         # Load data file
 
@@ -165,8 +165,7 @@ class GenManPw:
 
         except Exception as ex:
 
-            self.logger.warn("Could not clear the screen.")
-            self.logger.ShowError(ex)
+            self.logger.error("Failed to clear the screen.", ex)
 
     #
     ####################################
@@ -178,14 +177,20 @@ class GenManPw:
 
             salt = os.urandom(16).hex()
             key = base64.b64encode(hashlib.pbkdf2_hmac(self.HASH_TYPE, self.password, salt.encode(), self.ITERATIONS))
-            self.dat.saveValue("KEY", salt, "SECURITY_INFO", save=True)
-            self.pwfile.changeEncryptionKey(key, True)
+
+            # Save new key and salt
+
+            securityInfo = self.dat.get(KEY_SECURITY_INFO, {})
+            securityInfo[KEY_KEY] = salt
+            self.dat[KEY_SECURITY_INFO] = securityInfo
+            self.dataFileInstance.write(self.dat)
+            self.pwfile.setKey(key)
             self.logger.info("Encryption key changed.")
             return True
         
         except Exception as ex:
 
-            self.logger.ShowError(ex, "Failed to change encryption key.")
+            self.logger.error("Failed to change encryption key.", ex)
             return False
 
     #
@@ -367,8 +372,7 @@ class GenManPw:
         
         except Exception as ex:
 
-            self.logger.ShowError(ex)
-            self.logger.error("Failed to change password.")
+            self.logger.error("Failed to change password.", ex)
 
         return ""
 
@@ -1367,7 +1371,7 @@ class GenManPw:
             try:
 
                 self.logger.info("START")
-                password = self.dat.get(KEY_SECURITY_INFO, {}).get("Password", "")
+                password = self.dat.get(KEY_SECURITY_INFO, {}).get(KEY_PASSWORD, "")
 
                 # If the first time to use
 
@@ -1388,7 +1392,7 @@ class GenManPw:
                     strPassWd = getpass("\nPassword: ")
 
                     binPassWd = strPassWd.encode()
-                    passSalt = self.dat.readMapleTag("SALT", "SECURITY_INFO")
+                    passSalt = self.dat.get(KEY_SECURITY_INFO, {}).get(KEY_SALT, "")
                     salt = hashlib.pbkdf2_hmac(self.HASH_TYPE, binPassWd, passSalt.encode(), self.ITERATIONS)
                     hashedPw = hashlib.pbkdf2_hmac(self.HASH_TYPE, binPassWd, salt, self.ITERATIONS).hex()
 
@@ -1411,26 +1415,15 @@ class GenManPw:
 
                 try:
 
-                    # Check password file exists
-
-                    if not path.exists(self.PASS_LIST):
-
-                        newFile = True
-
-                    else:
-
-                        newFile = False
-
                     # Load password file
 
-                    fileHashSalt = self.dat.readMapleTag("KEY", "SECURITY_INFO").encode()
+                    fileHashSalt = self.dat.get(KEY_SECURITY_INFO, {}).get(KEY_KEY, "").encode()
                     key = base64.b64encode(hashlib.pbkdf2_hmac(self.HASH_TYPE, self.password, fileHashSalt, self.ITERATIONS))
                     self.pwfile = maplex.MapleJson(PASS_LIST, encrypt=True, key=key)
 
                 except maplex.MapleException as mex:
 
-                    self.logger(self.logLevel.FATAL, "Failed to load password file.")
-                    self.logger.ShowError(mex)
+                    self.logger.ShowError(mex, "Failed to load password file.", True)
                     return -97
 
                 self.logger.info("System login.")
@@ -1438,8 +1431,7 @@ class GenManPw:
                 
             except Exception as ex:
 
-                self.logger(self.logLevel.FATAL, "Failed to startup.")
-                self.logger.ShowError(ex)
+                self.logger.ShowError(ex, "Failed to startup.", True)
                 return -98
 
             try:
@@ -1513,8 +1505,8 @@ class GenManPw:
             except Exception as ex:
 
                 self.logger.ShowError(ex)
-                self.logger(self.logLevel.FATAL, "Could not handled the error.")
-                self.logger(self.logLevel.FATAL, "Exit the program.")
+                self.logger.fatal("Could not handled the error.")
+                self.logger.fatal("Exit the program.")
                 return -99
 
             finally:

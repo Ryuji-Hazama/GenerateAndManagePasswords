@@ -1,0 +1,9 @@
+[project]
+name = "generateandmanagepasswords"
+version = "0.1.0"
+requires-python = ">=3.14"
+dependencies = [
+    "cryptography>=46.0.3",
+    "maplex>=3.0.0",
+    "pyperclip>=1.11.0",
+]

@@ -16,6 +16,7 @@ KEY_PASSWORD_KEY = "PasswordKey"
 KEY_SECURITY_INFO = "SecurityInfo"
 KEY_PASSWORD = "Password"
 KEY_SALT = "Salt"
+KEY_KEY = "Key"
 
 KEY_PASSWORD_LIST = "PasswordList"
 KEY_SALT_LIST = "SaltList"

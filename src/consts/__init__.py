@@ -14,6 +14,7 @@ __all__ = [
     "KEY_SECURITY_INFO",
     "KEY_PASSWORD",
     "KEY_SALT",
+    "KEY_KEY",
     "KEY_PASSWORD_LIST",
     "KEY_SALT_LIST"
 ]
