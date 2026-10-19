@@ -152,7 +152,6 @@ class GenManPw:
         # Load data file
 
         self.dat = self.dataFileInstance.read()
-        self.pwfile = None  # Initialize the password file instance as None
 
     #
     ####################################
@@ -1382,10 +1381,8 @@ class GenManPw:
 
                     self.logger.info("First time to login.")
 
-                    if not path.exists(self.PASS_LIST):
-
-                        # Create a new empty password file
-                        self.pwfile = maplex.MapleJson(self.PASS_LIST).write({})
+                    # Create a new empty password file
+                    self.pwfile = maplex.MapleJson(self.PASS_LIST).write({})
 
                     password = self.changeSysPasswd()
 
