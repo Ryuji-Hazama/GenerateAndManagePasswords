@@ -822,7 +822,7 @@ class GenManPw:
 
                 try:
 
-                    passwordList = self.pwfile.readOrDefault(KEY_PASSWORD_LIST, {})
+                    passwordList = self.pwfile.readOrDefault({}, KEY_PASSWORD_LIST)
                     tagList = list(passwordList.keys())
                     i = 0
                     pwTag = f"PW{i}"
