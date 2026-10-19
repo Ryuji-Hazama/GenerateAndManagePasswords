@@ -169,6 +169,19 @@ class GenManPw:
 
     #
     ####################################
+    # Check if a list has an element
+
+    def hasElement(self, list: list[dict], key: str, value) -> bool:
+
+        for item in list:
+
+            if item.get(key) == value:
+                return True
+
+        return False
+
+    #
+    ####################################
     # Change key (maybe not need this function but just in case)
 
     def changeKey(self) -> bool:
@@ -827,17 +840,13 @@ class GenManPw:
 
                 datDicts = self.dat.get(KEY_DATAS, [])
                 siteData = next((item for item in datDicts if item.get(KEY_SITE_NAME) == siteName), {})
-                siteData[KEY_ACCOUNT_NAME] = accountName
-                siteData[KEY_PASSWORD_KEY] = pwTag
-                
-                if siteData not in datDicts:
+                accountData = {KEY_ACCOUNT_NAME: accountName, KEY_PASSWORD_KEY: pwTag}
 
-                    datDicts.append(siteData)
+                accountList = siteData.get(KEY_ACCOUNTS, [])
+                accountList.append(accountData)
+                siteData[KEY_ACCOUNTS] = accountList
 
-                else:
-
-                    self.logger.warn(f"Site data already exists: {siteName}")
-
+                datDicts.append(siteData)
                 self.dat[KEY_DATAS] = datDicts
                 self.dataFileInstance.write(self.dat)
 
@@ -845,7 +854,10 @@ class GenManPw:
 
                 # Get pw tag
 
-                pwTag = self.dat.readMapleTag(accountName, self.DATA_TAG, siteName)
+                datList = self.dat.get(KEY_DATAS, [])
+                siteData = next((item for item in datList if item.get(KEY_SITE_NAME) == siteName), {})
+                accountList = siteData.get(KEY_ACCOUNTS, [])
+                pwTag = next((item.get(KEY_PASSWORD_KEY) for item in accountList if item.get(KEY_ACCOUNT_NAME) == accountName), "")
 
             # Encode and save
 
@@ -874,7 +886,7 @@ class GenManPw:
 
         while True:
 
-            newAccount = input("\nAccount name > ").replace(" ", "_")
+            newAccount = input("\nAccount name > ")
             self.clearScreen()
 
             if newAccount.upper() in self.EXIT_OPS:
@@ -888,13 +900,13 @@ class GenManPw:
             
             try:
 
-                accountList = self.dat.getTags(self.DATA_TAG, siteName)
+                accountList = next((site.get(KEY_ACCOUNTS, []) for site in self.dat.get(KEY_DATAS, []) if site.get(KEY_SITE_NAME, None) == siteName), [])
 
             except mpex.MapleDataNotFoundException:
 
                 accountList = []
 
-            if newAccount in accountList:
+            if self.hasElement(accountList, KEY_ACCOUNT_NAME, newAccount):
 
                 while True:
 
@@ -934,7 +946,7 @@ class GenManPw:
     def selectSite(self, pageInd = 0) -> str:
 
         self.clearScreen()
-        siteList = self.dat.getHeaders(self.DATA_TAG)
+        siteList = list(item.get(KEY_SITE_NAME, "") for item in self.dat.get(KEY_DATAS, []))
         siteList.sort()
         
         if len(siteList) == 0:
@@ -951,7 +963,7 @@ class GenManPw:
     def selectAccountName(self, siteName: str, pageInd = 0) -> str:
 
         self.clearScreen()
-        accList = self.dat.getTags(self.DATA_TAG, siteName)
+        accList = list(item.get(KEY_ACCOUNT_NAME, "") for item in next((site.get(KEY_ACCOUNTS, []) for site in self.dat.get(KEY_DATAS, []) if site.get(KEY_SITE_NAME, None) == siteName), []))
         accList.sort()
 
         if len(accList) == 0:
@@ -967,13 +979,13 @@ class GenManPw:
 
     def newSiteData(self):
 
-        siteList = self.dat.getHeaders(self.DATA_TAG)
+        siteList = self.dat.get(KEY_DATAS, [])
 
         while True:
 
             newSite = input("\n\nSite name > ")
 
-            if newSite in siteList:
+            if self.hasElement(siteList, KEY_SITE_NAME, newSite):
 
                 while True:
 
